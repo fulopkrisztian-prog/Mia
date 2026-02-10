@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  background-color: transparent !important;
+}
+
+html, body, #root {
+  background-color: transparent !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900/30;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-indigo-600/60 to-violet-600/60 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply from-indigo-500/80 to-violet-500/80;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply backdrop-blur-xl bg-slate-900/80 border border-slate-700/50;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-indigo-300 to-violet-300 bg-clip-text text-transparent;
+  }
+}
