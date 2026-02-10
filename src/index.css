@@ -22,7 +22,6 @@ html, body, #root {
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 
-  /* Custom scrollbar */
   ::-webkit-scrollbar {
     @apply w-2;
   }
@@ -32,11 +31,11 @@ html, body, #root {
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-gradient-to-b from-indigo-600/60 to-violet-600/60 rounded-full;
+    @apply bg-gradient-to-b from-blue-600/60 to-cyan-600/60 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply from-indigo-500/80 to-violet-500/80;
+    @apply from-blue-500/80 to-cyan-500/80;
   }
 }
 
@@ -46,6 +45,6 @@ html, body, #root {
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-indigo-300 to-violet-300 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent;
   }
 }

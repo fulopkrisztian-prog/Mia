@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Gamepad2, Globe, Clock, Save, RefreshCw, Plus, X as CloseIcon, Monitor } from 'lucide-react';
+import { Gamepad2, Globe, Clock, Save, RefreshCw, Plus, X as CloseIcon, Monitor, Palette } from 'lucide-react';
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState({
@@ -109,7 +109,7 @@ const SettingsPage = () => {
   return (
     <div className="h-full overflow-y-auto custom-scrollbar select-none p-4 sm:p-6">
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-300 to-violet-300 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
           Settings
         </h1>
         <p className="text-slate-400 font-medium text-sm sm:text-base">Manage Mia's behavior and detection</p>
@@ -119,7 +119,7 @@ const SettingsPage = () => {
         
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
           <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 flex-shrink-0">
+            <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 flex-shrink-0">
               <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
@@ -137,12 +137,12 @@ const SettingsPage = () => {
                 value={newGame}
                 onChange={(e) => setNewGame(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddGame()}
-                className="flex-1 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500/50 text-sm transition-all shadow-inner"
+                className="flex-1 p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 text-sm transition-all shadow-inner"
                 placeholder="Process name (e.g. game.exe)"
               />
               <button
                 onClick={handleAddGame}
-                className="p-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/20 flex-shrink-0"
+                className="p-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-600/20 flex-shrink-0"
                 title="Add game"
               >
                 <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -156,7 +156,7 @@ const SettingsPage = () => {
               {settings.games.map((game) => (
                 <div
                   key={game}
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs text-slate-300 group hover:border-indigo-500/50 transition-all"
+                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-xs text-slate-300 group hover:border-blue-500/50 transition-all"
                 >
                   <span className="font-medium tracking-tight truncate max-w-[120px] sm:max-w-[150px]">
                     {game}
@@ -194,7 +194,7 @@ const SettingsPage = () => {
                 type="url"
                 value={settings.searxngUrl}
                 onChange={(e) => setSettings({ ...settings, searxngUrl: e.target.value })}
-                className="w-full p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 focus:outline-none focus:border-indigo-500/50 text-sm transition-all shadow-inner"
+                className="w-full p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 focus:outline-none focus:border-emerald-500/50 text-sm transition-all shadow-inner"
                 placeholder="https://searx.be"
               />
             </div>
@@ -254,7 +254,7 @@ const SettingsPage = () => {
 
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
           <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-            <div className="p-2 rounded-xl bg-violet-500/20 text-violet-400 flex-shrink-0">
+            <div className="p-2 rounded-xl bg-slate-700/30 text-slate-300 flex-shrink-0">
               <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
@@ -276,20 +276,23 @@ const SettingsPage = () => {
                   onChange={(e) => setSettings({ ...settings, launchOnStartup: e.target.checked })}
                   className="sr-only peer"
                 />
-                <div className="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 transition-colors"></div>
+                <div className="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 transition-colors"></div>
               </label>
             </div>
 
             {isFullscreen && (
               <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/40 border border-white/5">
-                <div>
-                  <div className="text-sm font-medium text-slate-200">Theme</div>
-                  <div className="text-xs text-slate-500">Application appearance</div>
+                <div className="flex items-center space-x-3">
+                  <Palette className="w-4 h-4 text-slate-400" />
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Theme</div>
+                    <div className="text-xs text-slate-500">Application appearance</div>
+                  </div>
                 </div>
                 <select
                   value={settings.theme}
                   onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
-                  className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-violet-500/50"
+                  className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-slate-600"
                 >
                   <option value="dark">Dark</option>
                   <option value="darker">Darker</option>
@@ -316,7 +319,7 @@ const SettingsPage = () => {
             className={`px-4 sm:px-8 py-2.5 rounded-xl font-bold transition-all flex items-center justify-center space-x-2 shadow-lg ${
               isSaving
                 ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white active:scale-95 shadow-indigo-600/30'
+                : 'bg-blue-600 hover:bg-blue-500 text-white active:scale-95 shadow-blue-600/30'
             } ${isFullscreen ? 'sm:w-auto' : 'w-full'}`}
           >
             {isSaving ? (

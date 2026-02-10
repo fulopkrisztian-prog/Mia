@@ -69,10 +69,10 @@ const Dashboard = () => {
     <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
       <div 
         data-tauri-drag-region 
-        className="h-12 flex items-center justify-between px-4 bg-slate-900/80 backdrop-blur-xl border-b border-indigo-500/30 select-none"
+        className="h-12 flex items-center justify-between px-4 bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/50 select-none"
       >
         <div className="flex items-center space-x-3 pointer-events-none">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
             <span className="text-white font-bold text-sm">M</span>
           </div>
           <span className="text-sm font-semibold text-slate-200">Mia AI Assistant</span>
@@ -110,7 +110,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="h-6 bg-slate-900/80 backdrop-blur-xl border-t border-slate-800/50 px-4 flex items-center justify-between">
+      <div className="h-6 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800/50 px-4 flex items-center justify-between">
         <div className="text-xs text-slate-400 flex items-center space-x-2">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           <span>

@@ -39,12 +39,12 @@ const FloatingIcon = () => {
         onMouseUp={() => setIsPressed(false)}
       >
         <div className="absolute inset-0 pointer-events-none">
-          <div className={`absolute inset-[-6px] rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/20 blur-[10px] transition-all duration-300 ${
+          <div className={`absolute inset-[-6px] rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 blur-[10px] transition-all duration-300 ${
             isHovered ? 'opacity-80 scale-110' : 'opacity-30'
           }`} />
           
-          <div className={`absolute inset-[-2px] rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all duration-300 ${
-            isHovered ? 'shadow-[0_0_30px_rgba(99,102,241,0.8)]' : ''
+          <div className={`absolute inset-[-2px] rounded-full shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-300 ${
+            isHovered ? 'shadow-[0_0_30px_rgba(59,130,246,0.8)]' : ''
           }`} />
           
           <div className={`absolute inset-0 rounded-full ring-1 ring-inset ring-white/10 transition-all duration-300 ${
@@ -55,8 +55,8 @@ const FloatingIcon = () => {
         <div 
           className={`absolute inset-0 rounded-full bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-slate-950/95 backdrop-blur-xl
             border border-slate-800/60 transition-all duration-300 ease-out flex items-center justify-center
-            ${isHovered ? 'border-violet-500/50 scale-105' : ''}
-            ${isPressed ? 'scale-95 border-violet-400/70' : ''}`}
+            ${isHovered ? 'border-blue-500/50 scale-105' : ''}
+            ${isPressed ? 'scale-95 border-blue-400/70' : ''}`}
         >
           <div className="absolute inset-2 rounded-full bg-gradient-to-br from-slate-700/10 to-transparent pointer-events-none" />
           <div className="absolute inset-0 rounded-full bg-[url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-20 pointer-events-none" />
@@ -65,22 +65,22 @@ const FloatingIcon = () => {
             ${isHovered ? 'scale-110 rotate-3' : ''}
             ${isPressed ? 'scale-90' : ''}`}
           >
-            <div className={`absolute inset-0 bg-indigo-500/20 blur-xl rounded-full transition-all duration-500 ${
+            <div className={`absolute inset-0 bg-blue-500/20 blur-xl rounded-full transition-all duration-500 ${
               isHovered ? 'opacity-80 scale-150' : 'opacity-0'
             }`} />
             
             <Sparkles 
               className={`relative w-8 h-8 transition-all duration-500 ${
                 isHovered 
-                  ? 'text-violet-100 drop-shadow-[0_0_10px_rgba(196,181,253,0.8)]' 
-                  : 'text-indigo-200 drop-shadow-[0_0_5px_rgba(196,181,253,0.4)]'
+                  ? 'text-blue-100 drop-shadow-[0_0_10px_rgba(147,197,253,0.8)]' 
+                  : 'text-slate-300 drop-shadow-[0_0_5px_rgba(147,197,253,0.4)]'
               }`}
               strokeWidth={1.5}
             />
           </div>
 
           {isPulsing && !isHovered && (
-            <div className="absolute inset-0 rounded-full border-2 border-violet-400/40 animate-ping" />
+            <div className="absolute inset-0 rounded-full border-2 border-blue-400/40 animate-ping" />
           )}
         </div>
 

@@ -61,14 +61,14 @@ const ChatWindow = () => {
             <div
               className={`max-w-3xl rounded-3xl p-5 backdrop-blur-md transition-all duration-300 ${
                 message.sender === 'user'
-                  ? 'bg-gradient-to-r from-indigo-600/40 to-violet-600/40 border border-indigo-500/50 rounded-br-none'
+                  ? 'bg-gradient-to-r from-blue-600/40 to-cyan-600/40 border border-blue-500/50 rounded-br-none'
                   : 'bg-slate-800/60 border border-slate-700/50 rounded-bl-none'
               }`}
             >
               <div className="flex items-center space-x-3 mb-2">
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
                   message.sender === 'user' 
-                    ? 'bg-gradient-to-br from-indigo-500 to-violet-500' 
+                    ? 'bg-gradient-to-br from-blue-500 to-cyan-500' 
                     : 'bg-gradient-to-br from-slate-700 to-slate-600'
                 }`}>
                   <span className="text-white font-bold text-sm">
@@ -88,14 +88,14 @@ const ChatWindow = () => {
         ))}
         <div ref={messagesEndRef} />
       </div>
-        <div className="mt-2 p-2 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-indigo-500/30">
+        <div className="mt-2 p-2 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-slate-700/50">
           <div className="flex items-center space-x-2">
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Message Mia..."
-              className="flex-1 p-2 px-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all duration-300 resize-none text-sm"
+              className="flex-1 p-2 px-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all duration-300 resize-none text-sm"
               rows={1}
             />
             <button
@@ -103,7 +103,7 @@ const ChatWindow = () => {
               disabled={!inputText.trim()}
               className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 flex items-center space-x-2 h-fit ${
                 inputText.trim()
-                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-500/20'
+                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-500/20'
                   : 'bg-slate-700 text-slate-400 cursor-not-allowed'
               }`}
             >
