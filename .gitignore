@@ -45,3 +45,7 @@ coverage/
 
 .pnpm-debug.log*
 .eslintcache
+
+*.gguf
+src-tauri/models/
+models/
