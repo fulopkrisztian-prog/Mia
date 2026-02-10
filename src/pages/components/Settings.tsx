@@ -174,34 +174,90 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
-          <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 flex-shrink-0">
-              <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
+        <div className={`${isFullscreen ? 'space-y-4 sm:space-y-6' : 'space-y-4 sm:space-y-6'}`}>
+          
+          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
+            <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+              <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 flex-shrink-0">
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-200">Search Integration</h2>
+                <p className="text-xs text-slate-400 font-normal">Configure web search settings</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-semibold text-slate-200">Search Integration</h2>
-              <p className="text-xs text-slate-400 font-normal">Configure web search settings</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
+                  SearXNG Instance URL
+                </label>
+                <input
+                  type="url"
+                  value={settings.searxngUrl}
+                  onChange={(e) => setSettings({ ...settings, searxngUrl: e.target.value })}
+                  className="w-full p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 focus:outline-none focus:border-emerald-500/50 text-sm transition-all shadow-inner"
+                  placeholder="https://searx.be"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
-                SearXNG Instance URL
-              </label>
-              <input
-                type="url"
-                value={settings.searxngUrl}
-                onChange={(e) => setSettings({ ...settings, searxngUrl: e.target.value })}
-                className="w-full p-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 focus:outline-none focus:border-emerald-500/50 text-sm transition-all shadow-inner"
-                placeholder="https://searx.be"
-              />
+          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
+            <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+              <div className="p-2 rounded-xl bg-slate-700/30 text-slate-300 flex-shrink-0">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-200">System</h2>
+                <p className="text-xs text-slate-400 font-normal">Application behavior and startup</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/40 border border-white/5">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-200 truncate">Launch on Startup</div>
+                  <div className="text-xs text-slate-500">Auto-start Mia with Windows</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={settings.launchOnStartup}
+                    onChange={(e) => setSettings({ ...settings, launchOnStartup: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 transition-colors"></div>
+                </label>
+              </div>
+
+              {isFullscreen && (
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/40 border border-white/5">
+                  <div className="flex items-center space-x-3">
+                    <Palette className="w-4 h-4 text-slate-400" />
+                    <div>
+                      <div className="text-sm font-medium text-slate-200">Theme</div>
+                      <div className="text-xs text-slate-500">Application appearance</div>
+                    </div>
+                  </div>
+                  <select
+                    value={settings.theme}
+                    onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
+                    className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-slate-600"
+                  >
+                    <option value="dark">Dark</option>
+                    <option value="darker">Darker</option>
+                    <option value="oled">OLED Black</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        {isFullscreen && (
+      {isFullscreen && (
+        <div className="mt-4 sm:mt-6 max-w-7xl mx-auto">
           <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
             <div className="flex items-center space-x-3 mb-4 sm:mb-6">
               <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 flex-shrink-0">
@@ -213,7 +269,7 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
                   Monitor Refresh Rate
@@ -250,59 +306,8 @@ const SettingsPage = () => {
               </div>
             </div>
           </div>
-        )}
-
-        <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
-          <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-            <div className="p-2 rounded-xl bg-slate-700/30 text-slate-300 flex-shrink-0">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-semibold text-slate-200">System</h2>
-              <p className="text-xs text-slate-400 font-normal">Application behavior and startup</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/40 border border-white/5">
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-200 truncate">Launch on Startup</div>
-                <div className="text-xs text-slate-500">Auto-start Mia with Windows</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                <input
-                  type="checkbox"
-                  checked={settings.launchOnStartup}
-                  onChange={(e) => setSettings({ ...settings, launchOnStartup: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 transition-colors"></div>
-              </label>
-            </div>
-
-            {isFullscreen && (
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-800/40 border border-white/5">
-                <div className="flex items-center space-x-3">
-                  <Palette className="w-4 h-4 text-slate-400" />
-                  <div>
-                    <div className="text-sm font-medium text-slate-200">Theme</div>
-                    <div className="text-xs text-slate-500">Application appearance</div>
-                  </div>
-                </div>
-                <select
-                  value={settings.theme}
-                  onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
-                  className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 text-sm focus:outline-none focus:border-slate-600"
-                >
-                  <option value="dark">Dark</option>
-                  <option value="darker">Darker</option>
-                  <option value="oled">OLED Black</option>
-                </select>
-              </div>
-            )}
-          </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/5">
         <div className={`flex flex-col ${isFullscreen ? 'sm:flex-row' : ''} justify-end space-y-3 ${isFullscreen ? 'sm:space-y-0 sm:space-x-3' : ''}`}>
