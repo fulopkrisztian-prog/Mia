@@ -1,34 +1,38 @@
-use tauri::{Manager, State};
 use crate::state::{AppState, MiaModel};
-use llama_cpp_2::model::params::LlamaModelParams;
-use llama_cpp_2::model::{LlamaModel, AddBos};
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_batch::LlamaBatch;
+use llama_cpp_2::model::params::LlamaModelParams;
+use llama_cpp_2::model::{AddBos, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
 use llama_cpp_2::LlamaModelLoadError;
-use std::path::PathBuf;
 use std::num::NonZeroU32;
+use std::path::PathBuf;
+use tauri::{Manager, State};
 
 #[tauri::command]
 pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<String, String> {
     let brain_lock = state.mia_brain.lock().unwrap();
     let brain = brain_lock.as_ref().ok_or("Mia agya nincs betöltve!")?;
 
-    let ctx_params = LlamaContextParams::default()
-        .with_n_ctx(NonZeroU32::new(512)); 
+    let ctx_params = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(512));
 
-    let mut ctx = brain.model.new_context(&state.backend, ctx_params)
+    let mut ctx = brain
+        .model
+        .new_context(&state.backend, ctx_params)
         .map_err(|e| format!("Kontextus hiba: {}", e))?;
 
     let prompt = format!("<|im_start|>system\nTe Mia vagy.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n", message);
-    let tokens = brain.model.str_to_token(&prompt, AddBos::Never)
+    let tokens = brain
+        .model
+        .str_to_token(&prompt, AddBos::Never)
         .map_err(|e| format!("Tokenizálási hiba: {}", e))?;
 
     let mut batch = LlamaBatch::new(512, 1);
     for (i, token) in tokens.iter().enumerate() {
         let _ = batch.add(*token, i as i32, &[0], i == tokens.len() - 1);
     }
-    ctx.decode(&mut batch).map_err(|e| format!("Decode hiba: {}", e))?;
+    ctx.decode(&mut batch)
+        .map_err(|e| format!("Decode hiba: {}", e))?;
 
     let mut sampler = LlamaSampler::greedy();
 
@@ -39,16 +43,23 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<Stri
     let mut token = sampler.sample(&ctx, batch.n_tokens() - 1);
 
     for _ in 0..200 {
-        if brain.model.is_eog_token(token) { break; }
+        if brain.model.is_eog_token(token) {
+            break;
+        }
 
-        let piece = brain.model.token_to_piece(token, &mut decoder, false, None)
+        let piece = brain
+            .model
+            .token_to_piece(token, &mut decoder, false, None)
             .map_err(|e| e.to_string())?;
         response.push_str(&piece);
 
         batch.clear();
-        batch.add(token, n_cur, &[0], true).map_err(|e| format!("Batch add hiba: {}", e))?;
-        ctx.decode(&mut batch).map_err(|e| format!("Generálási hiba: {}", e))?;
-        
+        batch
+            .add(token, n_cur, &[0], true)
+            .map_err(|e| format!("Batch add hiba: {}", e))?;
+        ctx.decode(&mut batch)
+            .map_err(|e| format!("Generálási hiba: {}", e))?;
+
         token = sampler.sample(&ctx, 0);
         n_cur += 1;
     }
@@ -56,41 +67,42 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<Stri
     Ok(response.trim().to_string())
 }
 
-use tauri::Emitter; 
+use tauri::Emitter;
 
 #[tauri::command]
 pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    if let Some(floater) = handle.get_webview_window("floater"){
+    if let Some(floater) = handle.get_webview_window("floater") {
         let _ = floater.emit("mia-loading-status", true);
     }
 
     let mut brain = state.mia_brain.lock().unwrap();
-    
-    if brain.is_some() { 
-        if let Some(floater) = handle.get_webview_window("floater"){
+
+    if brain.is_some() {
+        if let Some(floater) = handle.get_webview_window("floater") {
             let _ = floater.emit("mia-loading-status", false);
-        } 
-        return Ok(()); 
+        }
+        return Ok(());
     }
 
     let _ = handle.emit("mia-loading-status", true);
 
     let model_path = PathBuf::from("models/mia-brain-q4.gguf");
-    
-    let model_params = LlamaModelParams::default().with_n_gpu_layers(25); 
 
-    let model = LlamaModel::load_from_file(&state.backend, &model_path, &model_params)
-        .map_err(|e: LlamaModelLoadError| {
+    let model_params = LlamaModelParams::default().with_n_gpu_layers(25);
+
+    let model = LlamaModel::load_from_file(&state.backend, &model_path, &model_params).map_err(
+        |e: LlamaModelLoadError| {
             let _ = handle.emit("mia-loading-status", false);
             e.to_string()
-        })?;
+        },
+    )?;
 
     *brain = Some(MiaModel { model });
 
     if let Some(floater) = handle.get_webview_window("floater") {
         let _ = floater.emit("mia-loading-status", false);
     }
-        
+
     println!(">>> Mia agya online (RTX 3050 aktív, ctx: 512)");
     Ok(())
 }

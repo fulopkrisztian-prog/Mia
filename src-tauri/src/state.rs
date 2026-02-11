@@ -1,8 +1,8 @@
+use llama_cpp_2::llama_backend::LlamaBackend;
+use llama_cpp_2::model::LlamaModel;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
-use llama_cpp_2::model::LlamaModel;
-use llama_cpp_2::llama_backend::LlamaBackend;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppSettings {
@@ -36,8 +36,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> Self {
-        let backend = LlamaBackend::init()
-            .expect("Llama backend init sikertelen!");
+        let backend = LlamaBackend::init().expect("Llama backend init sikertelen!");
 
         println!("Llama backend inicializálva");
 

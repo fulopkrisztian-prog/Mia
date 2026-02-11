@@ -1,4 +1,4 @@
-pub mod window;
-pub mod system;
-pub mod settings;
 pub mod chat;
+pub mod settings;
+pub mod system;
+pub mod window;

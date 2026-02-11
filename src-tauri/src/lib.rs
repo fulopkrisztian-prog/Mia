@@ -1,27 +1,29 @@
-mod state;
 mod commands;
+mod state;
 
+use crate::state::{AppSettings, AppState};
 use llama_cpp_2::llama_backend::LlamaBackend;
-use tauri::{Manager, LogicalPosition, WindowEvent};
+use std::fs;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::fs;
-use sysinfo::{System, ProcessesToUpdate};
-use crate::state::{AppState, AppSettings};
+use sysinfo::{ProcessesToUpdate, System};
+use tauri::{Emitter, LogicalPosition, Manager, WindowEvent};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let shared_games: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let games_for_watcher = Arc::clone(&shared_games);
-    
+
     let mut sys = System::new_all();
     sys.refresh_all();
     let system_info = Arc::new(Mutex::new(sys));
-    
+
+    // Backend inicializálása (Vulkan támogatással)
     let backend = LlamaBackend::init().unwrap();
-    
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(AppState { 
             games_list: shared_games,
             sys: system_info,
@@ -39,16 +41,47 @@ pub fn run() {
             commands::settings::save_settings,
             commands::settings::get_settings
         ])
+        // --- ATOMBIZTOS VRAM FELSZABADÍTÁS ---
         .on_window_event(|window, event| {
             if window.label() == "main" {
-                if let WindowEvent::CloseRequested { .. } = event {
-                    let state = window.state::<AppState>();
-                    let mut brain = state.mia_brain.lock().unwrap();
-                    
-                    if brain.is_some() {
-                        *brain = None;
-                        println!(">>> Főablak bezárva: Mia agya törölve, VRAM felszabadítva.");
-                    }
+                match event {
+                    // Amikor rányomsz az "X" gombra
+                    WindowEvent::CloseRequested { api, .. } => {
+                        // 1. Megállítjuk a bezárást, hogy legyen idő a takarításra
+                        api.prevent_close(); 
+                        
+                        // 2. Azonnali elrejtés (vizuálisan úgy tűnik, mintha bezáródna)
+                        let _ = window.hide();
+                        
+                        // 3. Felszabadítás kényszerítése
+                        let state = window.state::<AppState>();
+                        let mut brain = state.mia_brain.lock().unwrap();
+                        
+                        if brain.is_some() {
+                            // Kiemeljük és azonnal megsemmisítjük a modellt
+                            let old_brain = brain.take();
+                            std::mem::drop(old_brain); 
+                            
+                            // Jelezzük a floaternek is a státuszt
+                            let _ = window.emit("mia-loading-status", false);
+                            
+                            println!(">>> X gomb elkapva: Mia agya kényszerítve törölve, VRAM felszabadítva.");
+                        }
+
+                        // 4. Megmutatjuk a floatert, ha nincs játék a háttérben
+                        if let Some(floater) = window.get_webview_window("floater") {
+                            let _ = floater.show();
+                        }
+                    },
+                    // Tartalék takarítás váratlan eseményekre
+                    WindowEvent::Destroyed => {
+                        let state = window.state::<AppState>();
+                        let mut brain = state.mia_brain.lock().unwrap();
+                        if brain.is_some() {
+                            let _ = brain.take();
+                        }
+                    },
+                    _ => {}
                 }
             }
         })
@@ -56,6 +89,7 @@ pub fn run() {
         .setup(move |app| {
             let handle = app.handle().clone();
             
+            // Beállítások betöltése
             let config_dir = handle.path().app_config_dir().unwrap();
             let file_path = config_dir.join("settings.json");
             if let Ok(content) = fs::read_to_string(&file_path) {
@@ -64,6 +98,7 @@ pub fn run() {
                 }
             }
 
+            // Floater pozicionálása
             if let Some(floater) = app.get_webview_window("floater") {
                 if let Ok(Some(monitor)) = floater.current_monitor() {
                     let size = monitor.size();
@@ -74,6 +109,7 @@ pub fn run() {
                 }
             }
 
+            // Háttérfolyamat (Játékfigyelő és Floater vezérlés)
             thread::spawn(move || {
                 let mut watcher_sys = System::new_all();
                 loop {
