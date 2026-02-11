@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{Manager, State};
 use crate::state::{AppState, MiaModel};
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{LlamaModel, AddBos};
@@ -56,18 +56,41 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<Stri
     Ok(response.trim().to_string())
 }
 
+use tauri::Emitter; 
+
 #[tauri::command]
-pub async fn load_mia(state: State<'_, AppState>) -> Result<(), String> {
+pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    if let Some(floater) = handle.get_webview_window("floater"){
+        let _ = floater.emit("mia-loading-status", true);
+    }
+
     let mut brain = state.mia_brain.lock().unwrap();
-    if brain.is_some() { return Ok(()); }
+    
+    if brain.is_some() { 
+        if let Some(floater) = handle.get_webview_window("floater"){
+            let _ = floater.emit("mia-loading-status", false);
+        } 
+        return Ok(()); 
+    }
+
+    let _ = handle.emit("mia-loading-status", true);
 
     let model_path = PathBuf::from("models/mia-brain-q4.gguf");
+    
     let model_params = LlamaModelParams::default().with_n_gpu_layers(25); 
 
     let model = LlamaModel::load_from_file(&state.backend, &model_path, &model_params)
-        .map_err(|e: LlamaModelLoadError| e.to_string())?;
+        .map_err(|e: LlamaModelLoadError| {
+            let _ = handle.emit("mia-loading-status", false);
+            e.to_string()
+        })?;
 
     *brain = Some(MiaModel { model });
+
+    if let Some(floater) = handle.get_webview_window("floater") {
+        let _ = floater.emit("mia-loading-status", false);
+    }
+        
     println!(">>> Mia agya online (RTX 3050 aktív, ctx: 512)");
     Ok(())
 }

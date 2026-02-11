@@ -1,19 +1,31 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import "../index.css";
+import { useModelStore } from '../store/modelStore';
+import { listen } from '@tauri-apps/api/event';
 
 const FloatingIcon = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [isPulsing, setIsPulsing] = useState(false);
+  const isLoading = useModelStore((s) => s.isLoading);
 
   useEffect(() => {
+    const unlistenPromise = listen('mia-loading-status', (event) => {
+      console.log('[FloatingIcon] Esemény érkezett:', event.payload);
+      useModelStore.getState().setLoading(!!event.payload);
+    });
+
     const interval = setInterval(() => {
       setIsPulsing(true);
       setTimeout(() => setIsPulsing(false), 1000);
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      unlistenPromise.then(unlistenFn => unlistenFn())
+    };
   }, []);
 
   const handleClick = async () => {
@@ -28,8 +40,8 @@ const FloatingIcon = () => {
 
   return (
     <div className="w-screen h-screen flex items-center justify-center overflow-hidden bg-transparent p-4">
-      
-      <div 
+
+      <div
         data-tauri-drag-region
         className="relative w-[70px] h-[70px] cursor-pointer select-none"
         onClick={handleClick}
@@ -39,54 +51,54 @@ const FloatingIcon = () => {
         onMouseUp={() => setIsPressed(false)}
       >
         <div className="absolute inset-0 pointer-events-none">
-          <div className={`absolute inset-[-6px] rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 blur-[10px] transition-all duration-300 ${
-            isHovered ? 'opacity-80 scale-110' : 'opacity-30'
-          }`} />
-          
-          <div className={`absolute inset-[-2px] rounded-full shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all duration-300 ${
-            isHovered ? 'shadow-[0_0_30px_rgba(59,130,246,0.8)]' : ''
-          }`} />
-          
-          <div className={`absolute inset-0 rounded-full ring-1 ring-inset ring-white/10 transition-all duration-300 ${
-            isHovered ? 'ring-white/30' : ''
-          }`} />
+          <div className={`absolute inset-[-6px] rounded-full bg-gradient-to-br transition-all duration-300 ${isLoading
+              ? 'from-cyan-400/40 to-blue-500/40 opacity-100 blur-[15px] animate-pulse'
+              : isHovered ? 'from-blue-500/20 to-cyan-500/20 opacity-80 scale-110 blur-[10px]' : 'opacity-30'
+            }`} />
+
+          <div className={`absolute inset-[-2px] rounded-full transition-all duration-300 ${isLoading
+              ? 'shadow-[0_0_25px_rgba(34,211,238,0.7)] ring-2 ring-cyan-400/50'
+              : isHovered ? 'shadow-[0_0_30px_rgba(59,130,246,0.8)]' : ''
+            }`} />
         </div>
 
-        <div 
+        <div
           className={`absolute inset-0 rounded-full bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-slate-950/95 backdrop-blur-xl
-            border border-slate-800/60 transition-all duration-300 ease-out flex items-center justify-center
-            ${isHovered ? 'border-blue-500/50 scale-105' : ''}
+            border transition-all duration-300 ease-out flex items-center justify-center
+            ${isLoading ? 'border-cyan-400 scale-105' : isHovered ? 'border-blue-500/50 scale-105' : 'border-slate-800/60'}
             ${isPressed ? 'scale-95 border-blue-400/70' : ''}`}
         >
+          {isLoading && (
+            <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-cyan-400 animate-spin" />
+          )}
+
           <div className="absolute inset-2 rounded-full bg-gradient-to-br from-slate-700/10 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 rounded-full bg-[url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAwIDEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iMyIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWx0ZXI9InVybCgjbm9pc2UpIiBvcGFjaXR5PSIwLjA1Ii8+PC9zdmc+')] opacity-20 pointer-events-none" />
-          
+
           <div className={`relative transition-all duration-500 ease-out
-            ${isHovered ? 'scale-110 rotate-3' : ''}
+            ${isLoading ? 'scale-75 opacity-50' : isHovered ? 'scale-110 rotate-3' : ''}
             ${isPressed ? 'scale-90' : ''}`}
           >
-            <div className={`absolute inset-0 bg-blue-500/20 blur-xl rounded-full transition-all duration-500 ${
-              isHovered ? 'opacity-80 scale-150' : 'opacity-0'
-            }`} />
-            
-            <Sparkles 
-              className={`relative w-8 h-8 transition-all duration-500 ${
-                isHovered 
-                  ? 'text-blue-100 drop-shadow-[0_0_10px_rgba(147,197,253,0.8)]' 
-                  : 'text-slate-300 drop-shadow-[0_0_5px_rgba(147,197,253,0.4)]'
-              }`}
+            <Sparkles
+              className={`relative w-8 h-8 transition-all duration-500 ${isLoading
+                  ? 'text-cyan-400'
+                  : isHovered
+                    ? 'text-blue-100 drop-shadow-[0_0_10px_rgba(147,197,253,0.8)]'
+                    : 'text-slate-300 drop-shadow-[0_0_5px_rgba(147,197,253,0.4)]'
+                }`}
               strokeWidth={1.5}
             />
           </div>
 
-          {isPulsing && !isHovered && (
+          {isPulsing && !isHovered && !isLoading && (
             <div className="absolute inset-0 rounded-full border-2 border-blue-400/40 animate-ping" />
           )}
+
         </div>
 
-        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full 
-          bg-gradient-to-br from-green-500 to-emerald-400 border-2 border-slate-950 shadow-lg">
-          <div className="absolute inset-0 rounded-full bg-green-400/50 animate-ping" />
+        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-slate-950 shadow-lg transition-all duration-500 ${isLoading ? 'bg-orange-500 shadow-orange-500/50' : 'bg-green-500 shadow-green-500/50'
+          }`}>
+          <div className={`absolute inset-0 rounded-full animate-ping ${isLoading ? 'bg-orange-400/50' : 'bg-green-400/50'
+            }`} />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Send, Loader2 } from 'lucide-react';
+import MarkdownResponse from './MarkdownResponse'; 
 
 interface Message {
   id: number;
@@ -11,7 +12,7 @@ interface Message {
 
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, content: "Szia! Én Mia vagyok, a személyes AI asszisztensed. Miben segíthetek ma?", sender: 'mia', timestamp: new Date() },
+    { id: 1, content: "Hi! I'm Mia, your personal assistant. How can I assist you today?", sender: 'mia', timestamp: new Date() },
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -98,7 +99,11 @@ const ChatWindow = () => {
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-slate-100 leading-relaxed pl-11 whitespace-pre-wrap">{message.content}</p>
+
+              <div className="pl-11 overflow-hidden">
+                <MarkdownResponse content={message.content} />
+              </div>
+              
             </div>
           </div>
         ))}
@@ -121,7 +126,7 @@ const ChatWindow = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={isLoading ? "Mia éppen gondolkodik..." : "Kérdezz valamit Miától..."}
+            placeholder={isLoading ? "Mia is thinking..." : "Ask Mia something..."}
             disabled={isLoading}
             className="flex-1 p-2 px-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all duration-300 resize-none text-sm disabled:opacity-50"
             rows={1}
@@ -136,7 +141,7 @@ const ChatWindow = () => {
             }`}
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            <span>{isLoading ? '...' : 'Küldés'}</span>
+            <span>{isLoading ? '...' : 'Send'}</span>
           </button>
         </div>
       </div>

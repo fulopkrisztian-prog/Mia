@@ -48,3 +48,18 @@ html, body, #root {
     @apply bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent;
   }
 }
+
+@layer utilities {
+  .animate-mia-glow {
+    animation: mia-glow 2s infinite ease-in-out;
+  }
+}
+
+@keyframes mia-glow {
+  0%, 100% { opacity: 0.4; filter: blur(15px) scale(1); }
+  50% { opacity: 0.8; filter: blur(20px) scale(1.1); }
+}
+
+.animate-spin-slow {
+  animation: spin 3s linear infinite;
+}

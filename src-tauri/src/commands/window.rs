@@ -11,7 +11,7 @@ pub async fn toggle_main_window(app: AppHandle, state: State<'_, AppState>) -> R
         floater.show().map_err(|e| e.to_string())?;
         let _ = chat::unload_mia(state).await;
     } else {
-        let _ = chat::load_mia(state).await;
+        let _ = chat::load_mia(app.clone(), state).await;
         main.show().map_err(|e| e.to_string())?;
         main.set_focus().map_err(|e| e.to_string())?;
         floater.hide().map_err(|e| e.to_string())?;
