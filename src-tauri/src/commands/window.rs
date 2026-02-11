@@ -1,14 +1,17 @@
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
+use crate::state::AppState;
+use crate::commands::chat;
 
 #[tauri::command]
-pub async fn toggle_main_window(app: AppHandle) -> Result<(), String> {
+pub async fn toggle_main_window(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let main = app.get_webview_window("main").ok_or("Main window not found")?;
     let floater = app.get_webview_window("floater").ok_or("Floater window not found")?;
-
     if main.is_visible().unwrap_or(false) {
         main.hide().map_err(|e| e.to_string())?;
         floater.show().map_err(|e| e.to_string())?;
+        let _ = chat::unload_mia(state).await;
     } else {
+        let _ = chat::load_mia(state).await;
         main.show().map_err(|e| e.to_string())?;
         main.set_focus().map_err(|e| e.to_string())?;
         floater.hide().map_err(|e| e.to_string())?;

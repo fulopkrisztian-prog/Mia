@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { Send, Loader2 } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -10,37 +11,52 @@ interface Message {
 
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, content: "Hello! I'm Mia, your AI assistant. How can I help you today?", sender: 'mia', timestamp: new Date() },
+    { id: 1, content: "Szia! Én Mia vagyok, a személyes AI asszisztensed. Miben segíthetek ma?", sender: 'mia', timestamp: new Date() },
   ]);
   const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = () => {
-    if (!inputText.trim()) return;
+  const handleSend = async () => {
+    if (!inputText.trim() || isLoading) return;
 
+    const currentInput = inputText;
     const userMessage: Message = {
-      id: messages.length + 1,
-      content: inputText,
+      id: Date.now(),
+      content: currentInput,
       sender: 'user',
       timestamp: new Date()
     };
     
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
+    setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const response: string = await invoke('ask_mia', { message: currentInput });
+
       const aiMessage: Message = {
-        id: messages.length + 2,
-        content: `I received: "${inputText}". This is a simulated response from Mia.`,
+        id: Date.now() + 1,
+        content: response,
         sender: 'mia',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
-    }, 1000);
+    } catch (err) {
+      console.error("Hiba történt Mia hívása közben:", err);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        content: "Bocsánat, hiba történt a feldolgozás közben. Kérlek ellenőrizd, hogy a modellem be van-e töltve!",
+        sender: 'mia',
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -52,7 +68,7 @@ const ChatWindow = () => {
 
   return (
     <div className="h-full flex flex-col p-4">
-      <div className="flex-1 overflow-y-auto space-y-6 p-4 rounded-3xl bg-slate-900/40 backdrop-blur-lg">
+      <div className="flex-1 overflow-y-auto space-y-6 p-4 rounded-3xl bg-slate-900/40 backdrop-blur-lg custom-scrollbar">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -69,50 +85,62 @@ const ChatWindow = () => {
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
                   message.sender === 'user' 
                     ? 'bg-gradient-to-br from-blue-500 to-cyan-500' 
-                    : 'bg-gradient-to-br from-slate-700 to-slate-600'
+                    : 'bg-gradient-to-br from-cyan-500 to-blue-500 shadow-inner'
                 }`}>
                   <span className="text-white font-bold text-sm">
                     {message.sender === 'user' ? 'U' : 'M'}
                   </span>
                 </div>
                 <span className="font-semibold text-slate-200">
-                  {message.sender === 'user' ? 'You' : 'Mia'}
+                  {message.sender === 'user' ? 'Te' : 'Mia'}
                 </span>
                 <span className="text-xs text-slate-400">
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-slate-100 leading-relaxed pl-11">{message.content}</p>
+              <p className="text-slate-100 leading-relaxed pl-11 whitespace-pre-wrap">{message.content}</p>
             </div>
           </div>
         ))}
+        
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-slate-800/40 border border-slate-700/30 rounded-3xl p-4 flex items-center space-x-3">
+              <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+              <span className="text-sm text-slate-400 animate-pulse font-mono">Mia éppen válaszol...</span>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
-        <div className="mt-2 p-2 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-slate-700/50">
-          <div className="flex items-center space-x-2">
-            <textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Message Mia..."
-              className="flex-1 p-2 px-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all duration-300 resize-none text-sm"
-              rows={1}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!inputText.trim()}
-              className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 flex items-center space-x-2 h-fit ${
-                inputText.trim()
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-500/20'
-                  : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <Send className="w-4 h-4" />
-              <span>Send</span>
-            </button>
-          </div>
+
+      <div className="mt-4 p-2 rounded-2xl bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 shadow-2xl">
+        <div className="flex items-center space-x-2">
+          <textarea
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder={isLoading ? "Mia éppen gondolkodik..." : "Kérdezz valamit Miától..."}
+            disabled={isLoading}
+            className="flex-1 p-2 px-3 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/20 transition-all duration-300 resize-none text-sm disabled:opacity-50"
+            rows={1}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!inputText.trim() || isLoading}
+            className={`px-4 py-2 rounded-xl font-medium text-sm transition-all duration-300 flex items-center space-x-2 h-fit ${
+              inputText.trim() && !isLoading
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 shadow-lg shadow-blue-500/20 active:scale-95'
+                : 'bg-slate-700 text-slate-400 cursor-not-allowed opacity-50'
+            }`}
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            <span>{isLoading ? '...' : 'Küldés'}</span>
+          </button>
         </div>
       </div>
+    </div>
   );
 };
 

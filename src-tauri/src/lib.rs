@@ -1,7 +1,8 @@
 mod state;
 mod commands;
 
-use tauri::{Manager, LogicalPosition};
+use llama_cpp_2::llama_backend::LlamaBackend;
+use tauri::{Manager, LogicalPosition, WindowEvent};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -17,13 +18,20 @@ pub fn run() {
     let mut sys = System::new_all();
     sys.refresh_all();
     let system_info = Arc::new(Mutex::new(sys));
-
+    
+    let backend = LlamaBackend::init().unwrap();
+    
     tauri::Builder::default()
         .manage(AppState { 
             games_list: shared_games,
-            sys: system_info 
+            sys: system_info,
+            mia_brain: Arc::new(Mutex::new(None)),
+            backend: Arc::new(backend),
         })
         .invoke_handler(tauri::generate_handler![
+            commands::chat::ask_mia,
+            commands::chat::load_mia,
+            commands::chat::unload_mia,
             commands::window::toggle_main_window, 
             commands::window::hide_main_window, 
             commands::window::maximize_main_window,
@@ -31,6 +39,20 @@ pub fn run() {
             commands::settings::save_settings,
             commands::settings::get_settings
         ])
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let WindowEvent::CloseRequested { .. } = event {
+                    let state = window.state::<AppState>();
+                    let mut brain = state.mia_brain.lock().unwrap();
+                    
+                    if brain.is_some() {
+                        *brain = None;
+                        println!(">>> Főablak bezárva: Mia agya törölve, VRAM felszabadítva.");
+                    }
+                }
+            }
+        })
+        // -----------------------------------------
         .setup(move |app| {
             let handle = app.handle().clone();
             
@@ -66,8 +88,12 @@ pub fn run() {
                     if let Some(floater) = handle.get_webview_window("floater") {
                         let main_v = handle.get_webview_window("main")
                             .map(|m| m.is_visible().unwrap_or(false)).unwrap_or(false);
-                        if is_running || main_v { let _ = floater.hide(); }
-                        else { let _ = floater.show(); }
+                        
+                        if is_running || main_v { 
+                            let _ = floater.hide(); 
+                        } else { 
+                            let _ = floater.show(); 
+                        }
                     }
                     thread::sleep(Duration::from_secs(3));
                 }
