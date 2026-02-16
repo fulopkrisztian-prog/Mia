@@ -20,7 +20,13 @@ pub fn run() {
     let system_info = Arc::new(Mutex::new(sys));
 
     // Backend inicializálása (Vulkan támogatással)
-    let backend = LlamaBackend::init().unwrap();
+    let backend = match LlamaBackend::init() {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("Hiba: Nem sikerült a Vulkan inicializálása: {:?}", e);
+            return;
+        }
+    };
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -29,6 +35,7 @@ pub fn run() {
             sys: system_info,
             mia_brain: Arc::new(Mutex::new(None)),
             backend: Arc::new(backend),
+            history: Mutex::new(Vec::new())
         })
         .invoke_handler(tauri::generate_handler![
             commands::chat::ask_mia,
@@ -41,39 +48,30 @@ pub fn run() {
             commands::settings::save_settings,
             commands::settings::get_settings
         ])
-        // --- ATOMBIZTOS VRAM FELSZABADÍTÁS ---
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 match event {
-                    // Amikor rányomsz az "X" gombra
                     WindowEvent::CloseRequested { api, .. } => {
-                        // 1. Megállítjuk a bezárást, hogy legyen idő a takarításra
                         api.prevent_close(); 
                         
-                        // 2. Azonnali elrejtés (vizuálisan úgy tűnik, mintha bezáródna)
                         let _ = window.hide();
                         
-                        // 3. Felszabadítás kényszerítése
                         let state = window.state::<AppState>();
                         let mut brain = state.mia_brain.lock().unwrap();
                         
                         if brain.is_some() {
-                            // Kiemeljük és azonnal megsemmisítjük a modellt
                             let old_brain = brain.take();
                             std::mem::drop(old_brain); 
                             
-                            // Jelezzük a floaternek is a státuszt
                             let _ = window.emit("mia-loading-status", false);
                             
                             println!(">>> X gomb elkapva: Mia agya kényszerítve törölve, VRAM felszabadítva.");
                         }
 
-                        // 4. Megmutatjuk a floatert, ha nincs játék a háttérben
                         if let Some(floater) = window.get_webview_window("floater") {
                             let _ = floater.show();
                         }
                     },
-                    // Tartalék takarítás váratlan eseményekre
                     WindowEvent::Destroyed => {
                         let state = window.state::<AppState>();
                         let mut brain = state.mia_brain.lock().unwrap();
@@ -85,11 +83,9 @@ pub fn run() {
                 }
             }
         })
-        // -----------------------------------------
         .setup(move |app| {
             let handle = app.handle().clone();
             
-            // Beállítások betöltése
             let config_dir = handle.path().app_config_dir().unwrap();
             let file_path = config_dir.join("settings.json");
             if let Ok(content) = fs::read_to_string(&file_path) {
@@ -98,7 +94,6 @@ pub fn run() {
                 }
             }
 
-            // Floater pozicionálása
             if let Some(floater) = app.get_webview_window("floater") {
                 if let Ok(Some(monitor)) = floater.current_monitor() {
                     let size = monitor.size();
@@ -109,7 +104,6 @@ pub fn run() {
                 }
             }
 
-            // Háttérfolyamat (Játékfigyelő és Floater vezérlés)
             thread::spawn(move || {
                 let mut watcher_sys = System::new_all();
                 loop {

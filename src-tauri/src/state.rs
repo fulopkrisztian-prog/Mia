@@ -5,6 +5,12 @@ use std::sync::{Arc, Mutex};
 use sysinfo::System;
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     pub games: Vec<String>,
     #[serde(rename = "searxngUrl")]
@@ -32,6 +38,7 @@ pub struct AppState {
     pub sys: Arc<Mutex<System>>,
     pub mia_brain: Arc<Mutex<Option<MiaModel>>>,
     pub backend: Arc<LlamaBackend>,
+    pub history: Mutex<Vec<ChatMessage>>,
 }
 
 impl AppState {
@@ -45,6 +52,7 @@ impl AppState {
             sys: Arc::new(Mutex::new(System::new_all())),
             mia_brain: Arc::new(Mutex::new(None)),
             backend: Arc::new(backend),
+            history: Mutex::new(Vec::new()), 
         }
     }
 }

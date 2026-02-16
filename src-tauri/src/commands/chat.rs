@@ -1,4 +1,4 @@
-use crate::state::{AppState, MiaModel};
+use crate::state::{AppState, MiaModel, ChatMessage};
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
@@ -11,60 +11,61 @@ use tauri::{Manager, State};
 
 #[tauri::command]
 pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<String, String> {
+    {
+        let mut history = state.history.lock().unwrap();
+        history.push(ChatMessage { role: "user".into(), content: message.clone() });
+        
+        if history.len() > 20 { history.remove(0); }
+    }
+
     let brain_lock = state.mia_brain.lock().unwrap();
     let brain = brain_lock.as_ref().ok_or("Mia agya nincs betöltve!")?;
 
-    let ctx_params = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(512));
+    let ctx_params = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(2048));
+    let mut ctx = brain.model.new_context(&state.backend, ctx_params).map_err(|e| e.to_string())?;
 
-    let mut ctx = brain
-        .model
-        .new_context(&state.backend, ctx_params)
-        .map_err(|e| format!("Kontextus hiba: {}", e))?;
+    let mut prompt = String::from("<|im_start|>system\nTe Mia vagy, egy cuki és okos AI asszisztens.<|im_end|>\n");
+    
+    {
+        let history = state.history.lock().unwrap();
+        for msg in history.iter() {
+            prompt.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
+        }
+    }
+    prompt.push_str("<|im_start|>assistant\n");
 
-    let prompt = format!("<|im_start|>system\nTe Mia vagy.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n", message);
-    let tokens = brain
-        .model
-        .str_to_token(&prompt, AddBos::Never)
-        .map_err(|e| format!("Tokenizálási hiba: {}", e))?;
-
-    let mut batch = LlamaBatch::new(512, 1);
+    let tokens = brain.model.str_to_token(&prompt, AddBos::Never).map_err(|e| e.to_string())?;
+    let mut batch = LlamaBatch::new(2048, 1);
     for (i, token) in tokens.iter().enumerate() {
         let _ = batch.add(*token, i as i32, &[0], i == tokens.len() - 1);
     }
-    ctx.decode(&mut batch)
-        .map_err(|e| format!("Decode hiba: {}", e))?;
+    ctx.decode(&mut batch).map_err(|e| e.to_string())?;
 
     let mut sampler = LlamaSampler::greedy();
-
     let mut response = String::new();
     let mut decoder = encoding_rs::UTF_8.new_decoder();
     let mut n_cur = tokens.len() as i32;
-
     let mut token = sampler.sample(&ctx, batch.n_tokens() - 1);
 
-    for _ in 0..200 {
-        if brain.model.is_eog_token(token) {
-            break;
-        }
-
-        let piece = brain
-            .model
-            .token_to_piece(token, &mut decoder, false, None)
-            .map_err(|e| e.to_string())?;
+    for _ in 0..512 {
+        if brain.model.is_eog_token(token) { break; }
+        let piece = brain.model.token_to_piece(token, &mut decoder, false, None).map_err(|e| e.to_string())?;
         response.push_str(&piece);
 
         batch.clear();
-        batch
-            .add(token, n_cur, &[0], true)
-            .map_err(|e| format!("Batch add hiba: {}", e))?;
-        ctx.decode(&mut batch)
-            .map_err(|e| format!("Generálási hiba: {}", e))?;
-
+        batch.add(token, n_cur, &[0], true).map_err(|e| e.to_string())?;
+        ctx.decode(&mut batch).map_err(|e| e.to_string())?;
         token = sampler.sample(&ctx, 0);
         n_cur += 1;
     }
 
-    Ok(response.trim().to_string())
+    let final_resp = response.trim().to_string();
+    {
+        let mut history = state.history.lock().unwrap();
+        history.push(ChatMessage { role: "assistant".into(), content: final_resp.clone() });
+    }
+
+    Ok(final_resp)
 }
 
 use tauri::Emitter;
