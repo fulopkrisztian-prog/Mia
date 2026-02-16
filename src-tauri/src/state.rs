@@ -42,6 +42,7 @@ pub struct AppState {
 }
 
 impl AppState {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         let backend = LlamaBackend::init().expect("Llama backend init sikertelen!");
 
