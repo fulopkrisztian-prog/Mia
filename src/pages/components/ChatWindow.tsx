@@ -1,18 +1,31 @@
 import { useState, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Send, Loader2 } from 'lucide-react';
-import MarkdownResponse from './MarkdownResponse'; 
+import { Send, Loader2, Zap, Cpu } from 'lucide-react'; 
+import MarkdownResponse from './MarkdownResponse';
+
+interface MiaResponse {
+  content: string;
+  tokens: number;
+  speed: number;
+}
 
 interface Message {
   id: number;
   content: string;
   sender: 'user' | 'mia';
   timestamp: Date;
+  tokens?: number;
+  speed?: number;
 }
 
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, content: "Hi! I'm Mia, your personal assistant. How can I assist you today?", sender: 'mia', timestamp: new Date() },
+    { 
+      id: 1, 
+      content: "Hi! I'm Mia, your personal assistant. How can I assist you today?", 
+      sender: 'mia', 
+      timestamp: new Date(),
+    },
   ]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,13 +51,15 @@ const ChatWindow = () => {
     setIsLoading(true);
 
     try {
-      const response: string = await invoke('ask_mia', { message: currentInput });
+      const response: MiaResponse = await invoke('ask_mia', { message: currentInput });
 
       const aiMessage: Message = {
         id: Date.now() + 1,
-        content: response,
+        content: response.content,
         sender: 'mia',
-        timestamp: new Date()
+        timestamp: new Date(),
+        tokens: response.tokens,
+        speed: response.speed
       };
       setMessages(prev => [...prev, aiMessage]);
     } catch (err) {
@@ -53,7 +68,9 @@ const ChatWindow = () => {
         id: Date.now() + 1,
         content: "Bocsánat, hiba történt a feldolgozás közben. Kérlek ellenőrizd, hogy a modellem be van-e töltve!",
         sender: 'mia',
-        timestamp: new Date()
+        timestamp: new Date(),
+        tokens: 0,
+        speed: 0
       }]);
     } finally {
       setIsLoading(false);
@@ -103,7 +120,21 @@ const ChatWindow = () => {
               <div className="pl-11 overflow-hidden">
                 <MarkdownResponse content={message.content} />
               </div>
-              
+
+              {message.sender === 'mia' && message.tokens !== undefined && (
+                <div className="mt-3 pl-11 flex justify-end items-center space-x-3 text-xs text-slate-400 border-t border-slate-700/30 pt-2">
+                  {message.speed !== undefined && (
+                    <div className="flex items-center space-x-1 bg-slate-700/30 px-2 py-1 rounded-full backdrop-blur-sm">
+                      <Zap className="w-3 h-3 text-yellow-400" />
+                      <span>{message.speed.toFixed(1)} tok/s</span>
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-1 bg-slate-700/30 px-2 py-1 rounded-full backdrop-blur-sm">
+                    <Cpu className="w-3 h-3 text-cyan-400" />
+                    <span>{message.tokens} token</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}

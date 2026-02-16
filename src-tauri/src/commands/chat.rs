@@ -8,9 +8,17 @@ use llama_cpp_2::LlamaModelLoadError;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use tauri::{Manager, State};
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct MiaResponse{
+    pub content: String,
+    pub tokens: i32,
+    pub speed: f32,
+}
 
 #[tauri::command]
-pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<String, String> {
+pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaResponse, String> {
     {
         let mut history = state.history.lock().unwrap();
         history.push(ChatMessage { role: "user".into(), content: message.clone() });
@@ -41,7 +49,17 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<Stri
     }
     ctx.decode(&mut batch).map_err(|e| e.to_string())?;
 
-    let mut sampler = LlamaSampler::greedy();
+    let start_time = std::time::Instant::now();
+    let mut generated_tokens = 0;
+    let seed: u32 = rand::random();
+
+    let mut sampler = LlamaSampler::chain(vec![
+        LlamaSampler::temp(0.8),
+        LlamaSampler::top_k(40),
+        LlamaSampler::top_p(0.95, 1),
+        LlamaSampler::dist(seed),
+    ], false, );
+
     let mut response = String::new();
     let mut decoder = encoding_rs::UTF_8.new_decoder();
     let mut n_cur = tokens.len() as i32;
@@ -57,7 +75,12 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<Stri
         ctx.decode(&mut batch).map_err(|e| e.to_string())?;
         token = sampler.sample(&ctx, 0);
         n_cur += 1;
+        generated_tokens += 1;
     }
+
+    let duration = start_time.elapsed();
+    let secs = duration.as_secs_f32();
+    let speed = if secs > 0.0 { generated_tokens as f32 / secs } else { 0.0 };
 
     let final_resp = response.trim().to_string();
     {
@@ -65,7 +88,11 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<Stri
         history.push(ChatMessage { role: "assistant".into(), content: final_resp.clone() });
     }
 
-    Ok(final_resp)
+    Ok(MiaResponse{
+        content: final_resp,
+        tokens: generated_tokens,
+        speed,
+    })
 }
 
 use tauri::Emitter;
