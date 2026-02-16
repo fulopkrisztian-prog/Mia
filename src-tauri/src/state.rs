@@ -5,10 +5,19 @@ use std::sync::{Arc, Mutex};
 use sysinfo::System;
 use std::collections::HashMap;
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+pub enum MiaMode {
+    Auto,
+    Basic,
+    Philosophy,
+    Search
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    pub timestamp: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -41,7 +50,8 @@ pub struct AppState {
     pub backend: Arc<LlamaBackend>,
     pub history: Mutex<Vec<ChatMessage>>,
     pub chats: Mutex<HashMap<String, Vec<ChatMessage>>>,
-    pub active_chat_id: Mutex<String>
+    pub active_chat_id: Mutex<String>,
+    pub current_mode: Mutex<MiaMode>
 }
 
 impl AppState {
@@ -59,6 +69,7 @@ impl AppState {
             history: Mutex::new(Vec::new()),
             chats: Mutex::new(HashMap::new()),
             active_chat_id: Mutex::new(String::new()),
+            current_mode: Mutex::new(MiaMode::Auto)
         }
     }
 }
