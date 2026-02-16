@@ -65,7 +65,8 @@ pub fn run() {
             commands::window::maximize_main_window,
             commands::system::get_system_stats,
             commands::settings::save_settings,
-            commands::settings::get_settings
+            commands::settings::get_settings,
+            commands::chat::get_chat_history,
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {

@@ -4,11 +4,10 @@ use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
-use llama_cpp_2::LlamaModelLoadError;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use tauri::{Manager, State, Emitter};
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use uuid::Uuid;
 use std::time::Instant;
 use std::collections::HashMap;
@@ -21,18 +20,29 @@ pub struct MiaResponse {
     pub speed: f32,
 }
 
+fn save_chats_to_disk(handle: &tauri::AppHandle, chats: &HashMap<String, Vec<ChatMessage>>) -> Result<(), String> {
+    let app_dir = handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    
+    if !app_dir.exists() {
+        fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+    }
+
+    let file_path = app_dir.join("chats_history.json");
+    let json = serde_json::to_string_pretty(chats).map_err(|e| e.to_string())?;
+    fs::write(file_path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[tauri::command]
-pub async fn create_new_chat(state: State<'_, AppState>) -> Result<String, String> {
+pub async fn create_new_chat(handle: tauri::AppHandle, state: State<'_, AppState>) -> Result<String, String> {
     let new_id = Uuid::new_v4().to_string();
     let mut chats = state.chats.lock().unwrap();
-    
     chats.insert(new_id.clone(), Vec::new());
     
     let mut active_id = state.active_chat_id.lock().unwrap();
     *active_id = new_id.clone();
     
-    save_chats_to_disk(&chats)?;
+    save_chats_to_disk(&handle, &chats)?;
     Ok(new_id)
 }
 
@@ -65,15 +75,8 @@ pub async fn switch_chat(chat_id: String, state: State<'_, AppState>) -> Result<
     Ok(())
 }
 
-fn save_chats_to_disk(chats: &HashMap<String, Vec<ChatMessage>>) -> Result<(), String> {
-    let path = PathBuf::from("chats_history.json");
-    let json = serde_json::to_string_pretty(chats).map_err(|e| e.to_string())?;
-    fs::write(path, json).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 #[tauri::command]
-pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaResponse, String> {
+pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_, AppState>) -> Result<MiaResponse, String> {
     let chat_id = state.active_chat_id.lock().unwrap().clone();
     if chat_id.is_empty() {
         return Err("Nincs aktív chat! Hozz létre egyet.".into());
@@ -83,7 +86,6 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaR
         let mut chats = state.chats.lock().unwrap();
         let history = chats.entry(chat_id.clone()).or_insert(Vec::new());
         history.push(ChatMessage { role: "user".into(), content: message.clone() });
-        
         if history.len() > 10 { history.remove(0); }
     }
 
@@ -152,7 +154,7 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaR
             history.push(ChatMessage { role: "assistant".into(), content: final_resp.clone() });
             if history.len() > 10 { history.remove(0); }
         }
-        save_chats_to_disk(&chats)?;
+        save_chats_to_disk(&handle, &chats)?;
     }
 
     Ok(MiaResponse {
@@ -191,7 +193,6 @@ pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> R
         let _ = floater.emit("mia-loading-status", false);
     }
 
-    println!(">>> Mia agya online (RTX 3050 aktív, Multi-chat mód)");
     Ok(())
 }
 
@@ -199,6 +200,11 @@ pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> R
 pub async fn unload_mia(state: State<'_, AppState>) -> Result<(), String> {
     let mut brain = state.mia_brain.lock().unwrap();
     *brain = None;
-    println!("Mia elment pihenni, VRAM felszabadítva.");
     Ok(())
+}
+
+#[tauri::command]
+pub async fn get_chat_history(chat_id: String, state: State<'_, AppState>) -> Result<Vec<ChatMessage>, String> {
+    let chats = state.chats.lock().unwrap();
+    Ok(chats.get(&chat_id).cloned().unwrap_or_default())
 }

@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { 
-  X,
-  Maximize2, 
-  Copy 
-} from 'lucide-react';
+import { X, Maximize2, Copy } from 'lucide-react';
 
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
@@ -32,7 +28,7 @@ const Dashboard = () => {
     });
 
     return () => {
-      unlisten.then(f => f());
+      unlisten.then((f) => f());
     };
   }, []);
 
@@ -67,8 +63,8 @@ const Dashboard = () => {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      <div 
-        data-tauri-drag-region 
+      <div
+        data-tauri-drag-region
         className="h-12 flex items-center justify-between px-4 bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/50 select-none"
       >
         <div className="flex items-center space-x-3 pointer-events-none">
@@ -77,13 +73,12 @@ const Dashboard = () => {
           </div>
           <span className="text-sm font-semibold text-slate-200">Mia AI Assistant</span>
         </div>
-        
-        <div className="flex items-center space-x-2">
 
+        <div className="flex items-center space-x-2">
           <button
             onClick={handleMaximize}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-800/60 transition-colors duration-200 group"
-            title={isMaximized ? "Restore Down" : "Maximize"}
+            title={isMaximized ? 'Restore Down' : 'Maximize'}
           >
             {isMaximized ? (
               <Copy className="w-4 h-4 text-slate-400 group-hover:text-slate-200 rotate-180" />
@@ -91,7 +86,7 @@ const Dashboard = () => {
               <Maximize2 className="w-4 h-4 text-slate-400 group-hover:text-slate-200" />
             )}
           </button>
-          
+
           <button
             onClick={handleClose}
             className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-500/20 transition-colors duration-200 group"
@@ -104,24 +99,19 @@ const Dashboard = () => {
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        
-        <div className="flex-1 overflow-hidden">
-          {renderContent()}
-        </div>
+        <div className="flex-1 overflow-hidden">{renderContent()}</div>
       </div>
 
       <div className="h-6 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800/50 px-4 flex items-center justify-between">
         <div className="text-xs text-slate-400 flex items-center space-x-2">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           <span>
-            {activeTab === 'chat' && 'Ready to chat'}
+            {activeTab === 'chat' && 'Ready to chat • RTX 3050 • Llama CPP v2'}
             {activeTab === 'monitor' && 'Monitoring system resources'}
             {activeTab === 'settings' && 'Configure your assistant'}
           </span>
         </div>
-        <div className="text-xs text-slate-500">
-          Mia AI v1.0.0
-        </div>
+        <div className="text-xs text-slate-500">Mia AI v1.2.0</div>
       </div>
     </div>
   );
