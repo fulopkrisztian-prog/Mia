@@ -7,23 +7,84 @@ use llama_cpp_2::sampling::LlamaSampler;
 use llama_cpp_2::LlamaModelLoadError;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
-use tauri::{Manager, State};
-use serde::Serialize;
+use tauri::{Manager, State, Emitter};
+use serde::{Serialize, Deserialize};
+use uuid::Uuid;
+use std::time::Instant;
+use std::collections::HashMap;
+use std::fs;
 
 #[derive(Serialize)]
-pub struct MiaResponse{
+pub struct MiaResponse {
     pub content: String,
     pub tokens: i32,
     pub speed: f32,
 }
 
+
+#[tauri::command]
+pub async fn create_new_chat(state: State<'_, AppState>) -> Result<String, String> {
+    let new_id = Uuid::new_v4().to_string();
+    let mut chats = state.chats.lock().unwrap();
+    
+    chats.insert(new_id.clone(), Vec::new());
+    
+    let mut active_id = state.active_chat_id.lock().unwrap();
+    *active_id = new_id.clone();
+    
+    save_chats_to_disk(&chats)?;
+    Ok(new_id)
+}
+
+#[tauri::command]
+pub async fn get_all_chats(state: State<'_, AppState>) -> Result<HashMap<String, String>, String> {
+    let chats = state.chats.lock().unwrap();
+    let mut summary = HashMap::new();
+    
+    for (id, history) in chats.iter() {
+        let name = history.first()
+            .map(|m| {
+                let mut s = m.content.chars().take(20).collect::<String>();
+                if m.content.len() > 20 { s.push_str("..."); }
+                s
+            })
+            .unwrap_or_else(|| "New Chat".to_string());
+        summary.insert(id.clone(), name);
+    }
+    Ok(summary)
+}
+
+#[tauri::command]
+pub async fn switch_chat(chat_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    let chats = state.chats.lock().unwrap();
+    if !chats.contains_key(&chat_id) {
+        return Err("Chat nem található".into());
+    }
+    let mut active_id = state.active_chat_id.lock().unwrap();
+    *active_id = chat_id;
+    Ok(())
+}
+
+fn save_chats_to_disk(chats: &HashMap<String, Vec<ChatMessage>>) -> Result<(), String> {
+    let path = PathBuf::from("chats_history.json");
+    let json = serde_json::to_string_pretty(chats).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaResponse, String> {
+    let chat_id = state.active_chat_id.lock().unwrap().clone();
+    if chat_id.is_empty() {
+        return Err("Nincs aktív chat! Hozz létre egyet.".into());
+    }
+
     {
-        let mut history = state.history.lock().unwrap();
+        let mut chats = state.chats.lock().unwrap();
+        let history = chats.entry(chat_id.clone()).or_insert(Vec::new());
         history.push(ChatMessage { role: "user".into(), content: message.clone() });
         
-        if history.len() > 20 { history.remove(0); }
+        if history.len() > 10 { history.remove(0); }
     }
 
     let brain_lock = state.mia_brain.lock().unwrap();
@@ -33,11 +94,12 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaR
     let mut ctx = brain.model.new_context(&state.backend, ctx_params).map_err(|e| e.to_string())?;
 
     let mut prompt = String::from("<|im_start|>system\nTe Mia vagy, egy cuki és okos AI asszisztens.<|im_end|>\n");
-    
     {
-        let history = state.history.lock().unwrap();
-        for msg in history.iter() {
-            prompt.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
+        let chats = state.chats.lock().unwrap();
+        if let Some(history) = chats.get(&chat_id) {
+            for msg in history.iter() {
+                prompt.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
+            }
         }
     }
     prompt.push_str("<|im_start|>assistant\n");
@@ -49,7 +111,7 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaR
     }
     ctx.decode(&mut batch).map_err(|e| e.to_string())?;
 
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
     let mut generated_tokens = 0;
     let seed: u32 = rand::random();
 
@@ -58,7 +120,7 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaR
         LlamaSampler::top_k(40),
         LlamaSampler::top_p(0.95, 1),
         LlamaSampler::dist(seed),
-    ], false, );
+    ], false);
 
     let mut response = String::new();
     let mut decoder = encoding_rs::UTF_8.new_decoder();
@@ -83,19 +145,22 @@ pub async fn ask_mia(message: String, state: State<'_, AppState>) -> Result<MiaR
     let speed = if secs > 0.0 { generated_tokens as f32 / secs } else { 0.0 };
 
     let final_resp = response.trim().to_string();
+    
     {
-        let mut history = state.history.lock().unwrap();
-        history.push(ChatMessage { role: "assistant".into(), content: final_resp.clone() });
+        let mut chats = state.chats.lock().unwrap();
+        if let Some(history) = chats.get_mut(&chat_id) {
+            history.push(ChatMessage { role: "assistant".into(), content: final_resp.clone() });
+            if history.len() > 10 { history.remove(0); }
+        }
+        save_chats_to_disk(&chats)?;
     }
 
-    Ok(MiaResponse{
+    Ok(MiaResponse {
         content: final_resp,
         tokens: generated_tokens,
         speed,
     })
 }
-
-use tauri::Emitter;
 
 #[tauri::command]
 pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> Result<(), String> {
@@ -104,7 +169,6 @@ pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> R
     }
 
     let mut brain = state.mia_brain.lock().unwrap();
-
     if brain.is_some() {
         if let Some(floater) = handle.get_webview_window("floater") {
             let _ = floater.emit("mia-loading-status", false);
@@ -113,17 +177,13 @@ pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> R
     }
 
     let _ = handle.emit("mia-loading-status", true);
-
     let model_path = PathBuf::from("models/mia-brain-q4.gguf");
-
     let model_params = LlamaModelParams::default().with_n_gpu_layers(25);
 
-    let model = LlamaModel::load_from_file(&state.backend, &model_path, &model_params).map_err(
-        |e: LlamaModelLoadError| {
-            let _ = handle.emit("mia-loading-status", false);
-            e.to_string()
-        },
-    )?;
+    let model = LlamaModel::load_from_file(&state.backend, &model_path, &model_params).map_err(|e| {
+        let _ = handle.emit("mia-loading-status", false);
+        e.to_string()
+    })?;
 
     *brain = Some(MiaModel { model });
 
@@ -131,7 +191,7 @@ pub async fn load_mia(handle: tauri::AppHandle, state: State<'_, AppState>) -> R
         let _ = floater.emit("mia-loading-status", false);
     }
 
-    println!(">>> Mia agya online (RTX 3050 aktív, ctx: 512)");
+    println!(">>> Mia agya online (RTX 3050 aktív, Multi-chat mód)");
     Ok(())
 }
 

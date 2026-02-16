@@ -3,6 +3,7 @@ use llama_cpp_2::model::LlamaModel;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use sysinfo::System;
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
@@ -39,6 +40,8 @@ pub struct AppState {
     pub mia_brain: Arc<Mutex<Option<MiaModel>>>,
     pub backend: Arc<LlamaBackend>,
     pub history: Mutex<Vec<ChatMessage>>,
+    pub chats: Mutex<HashMap<String, Vec<ChatMessage>>>,
+    pub active_chat_id: Mutex<String>
 }
 
 impl AppState {
@@ -53,7 +56,9 @@ impl AppState {
             sys: Arc::new(Mutex::new(System::new_all())),
             mia_brain: Arc::new(Mutex::new(None)),
             backend: Arc::new(backend),
-            history: Mutex::new(Vec::new()), 
+            history: Mutex::new(Vec::new()),
+            chats: Mutex::new(HashMap::new()),
+            active_chat_id: Mutex::new(String::new()),
         }
     }
 }

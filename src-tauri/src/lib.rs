@@ -1,7 +1,7 @@
 mod commands;
 mod state;
 
-use crate::state::{AppSettings, AppState};
+use crate::state::{AppSettings, AppState, ChatMessage};
 use llama_cpp_2::llama_backend::LlamaBackend;
 use std::fs;
 use std::sync::{Arc, Mutex};
@@ -9,6 +9,18 @@ use std::thread;
 use std::time::Duration;
 use sysinfo::{ProcessesToUpdate, System};
 use tauri::{Emitter, LogicalPosition, Manager, WindowEvent};
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+fn load_chats_from_disk() -> HashMap<String, Vec<ChatMessage>> {
+    let path = PathBuf::from("chats_history.json");
+    if path.exists() {
+        let data = fs::read_to_string(path).unwrap_or_default();
+        serde_json::from_str(&data).unwrap_or_else(|_| HashMap::new())
+    } else {
+        HashMap::new()
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -19,7 +31,6 @@ pub fn run() {
     sys.refresh_all();
     let system_info = Arc::new(Mutex::new(sys));
 
-    // Backend inicializálása (Vulkan támogatással)
     let backend = match LlamaBackend::init() {
         Ok(b) => b,
         Err(e) => {
@@ -28,6 +39,9 @@ pub fn run() {
         }
     };
 
+    let initial_chats = load_chats_from_disk();
+    let initial_active_id = initial_chats.keys().next().cloned().unwrap_or_default();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(AppState { 
@@ -35,12 +49,17 @@ pub fn run() {
             sys: system_info,
             mia_brain: Arc::new(Mutex::new(None)),
             backend: Arc::new(backend),
-            history: Mutex::new(Vec::new())
+            history: Mutex::new(Vec::new()),
+            chats: Mutex::new(initial_chats),
+            active_chat_id: Mutex::new(initial_active_id)
         })
         .invoke_handler(tauri::generate_handler![
             commands::chat::ask_mia,
             commands::chat::load_mia,
             commands::chat::unload_mia,
+            commands::chat::create_new_chat,
+            commands::chat::get_all_chats,
+            commands::chat::switch_chat,
             commands::window::toggle_main_window, 
             commands::window::hide_main_window, 
             commands::window::maximize_main_window,
@@ -53,7 +72,6 @@ pub fn run() {
                 match event {
                     WindowEvent::CloseRequested { api, .. } => {
                         api.prevent_close(); 
-                        
                         let _ = window.hide();
                         
                         let state = window.state::<AppState>();
@@ -62,9 +80,7 @@ pub fn run() {
                         if brain.is_some() {
                             let old_brain = brain.take();
                             std::mem::drop(old_brain); 
-                            
                             let _ = window.emit("mia-loading-status", false);
-                            
                             println!(">>> X gomb elkapva: Mia agya kényszerítve törölve, VRAM felszabadítva.");
                         }
 
