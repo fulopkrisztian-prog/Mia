@@ -1,4 +1,4 @@
-use crate::state::{AppState, MiaModel, ChatMessage, MiaMode};
+use crate::state::{AppState, MiaModel, ChatMessage, MiaMode, WebSource};
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
@@ -19,6 +19,7 @@ pub struct MiaResponse {
     pub content: String,
     pub tokens: i32,
     pub speed: f32,
+    pub sources: Vec<WebSource>,
 }
 
 #[derive(Serialize)]
@@ -43,48 +44,70 @@ fn save_chats_to_disk(handle: &tauri::AppHandle, chats: &HashMap<String, Vec<Cha
     Ok(())
 }
 
-async fn fetch_web_results(query: &str) -> Result<String, String> {
-    let client = reqwest::Client::builder()
+async fn fetch_web_results(query: &str) -> (String, Vec<WebSource>) {
+    let mut sources = Vec::new();
+    let client = match reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .build()
-        .map_err(|e| e.to_string())?;
+        .build() {
+            Ok(c) => c,
+            Err(_) => return ("Search failed to initialize.".into(), Vec::new()),
+        };
 
     let url = format!("https://html.duckduckgo.com/html/?q={}", query);
-    let html_content = client.get(url).send().await.map_err(|e| e.to_string())?.text().await.map_err(|e| e.to_string())?;
+    let res = match client.get(url).send().await {
+        Ok(r) => r,
+        Err(_) => return ("Failed to connect to search engine.".into(), Vec::new()),
+    };
 
+    let html_content = res.text().await.unwrap_or_default();
     let document = Html::parse_document(&html_content);
     let result_selector = Selector::parse(".result__body").unwrap();
     let title_selector = Selector::parse(".result__a").unwrap();
     let snippet_selector = Selector::parse(".result__snippet").unwrap();
 
-    let mut search_context = String::from("\nRelevant information from the web:\n");
-    let mut found = false;
+    let mut search_context = String::from("\nWeb Search Data (Current Date: 2026):\n");
 
-    for result in document.select(&result_selector).take(4) {
-        let title = result.select(&title_selector).next().map(|e| e.text().collect::<String>()).unwrap_or_default();
-        let snippet = result.select(&snippet_selector).next().map(|e| e.text().collect::<String>()).unwrap_or_default();
-        
-        if !title.is_empty() && !snippet.is_empty() {
-            search_context.push_str(&format!("- Source: {}\n  Content: {}\n", title, snippet));
-            found = true;
+    for result in document.select(&result_selector).take(5) {
+        let title_el = result.select(&title_selector).next();
+        let snippet_el = result.select(&snippet_selector).next();
+
+        if let (Some(t_el), Some(s_el)) = (title_el, snippet_el) {
+            let title = t_el.text().collect::<String>();
+            let snippet = s_el.text().collect::<String>();
+            let raw_url = t_el.value().attr("href").unwrap_or_default();
+
+            if !title.is_empty() && !raw_url.is_empty() {
+                let clean_url = if raw_url.starts_with("//") { 
+                    format!("https:{}", raw_url) 
+                } else if raw_url.contains("http") {
+                    raw_url.to_string()
+                } else {
+                    format!("https://duckduckgo.com{}", raw_url)
+                };
+
+                sources.push(WebSource { 
+                    title: title.clone(), 
+                    url: clean_url.clone() 
+                });
+                
+                search_context.push_str(&format!("- Source: {}\n  Content: {}\n\n", title, snippet));
+            }
         }
     }
 
-    if !found {
-        return Ok("\nNo recent web information found for this query.".to_string());
+    if sources.is_empty() {
+        println!("DEBUG: No sources found in HTML!");
+        (String::from("No search results found on the web."), Vec::new())
+    } else {
+        (search_context, sources)
     }
-
-    Ok(search_context)
 }
 
 fn get_settings_for_mode(content: &str, current_mode: &MiaMode) -> (String, f32) {
     let mut final_mode = current_mode.clone();
 
     if final_mode == MiaMode::Auto {
-        let philo_keywords = vec![
-            "miért", "élet", "halál", "értelem", "világ", "létezés", "igazság", "filozófia",
-            "why", "life", "death", "meaning", "existence", "truth", "philosophy", "reality"
-        ];
+        let philo_keywords = vec!["miért", "élet", "halál", "értelem", "világ", "létezés", "igazság", "filozófia"];
         let lower_content = content.to_lowercase();
         if philo_keywords.iter().any(|&k| lower_content.contains(k)) {
             final_mode = MiaMode::Philosophy;
@@ -93,15 +116,17 @@ fn get_settings_for_mode(content: &str, current_mode: &MiaMode) -> (String, f32)
 
     match final_mode {
         MiaMode::Philosophy => (
-            "You are Mia, but in Philosopher Mode. Provide deep existential insights. Reference stoicism, nihilism, or classical philosophers when relevant. Your tone is poetic, serious, and thought-provoking. Challenge the user to think deeper.".to_string(),
+            "You are Mia, in Philosopher Mode. Provide deep existential insights. Use poetic, serious language and challenge the user's perspective.".to_string(),
             1.25
         ),
         MiaMode::Search => (
-            "You are Mia, a Fact-Checking Assistant with real-time web access. Use the provided web search results to answer precisely. If the information is not in the search results, say you don't know based on the web. Cite sources briefly if possible.".to_string(),
+            "You are Mia, a Fact-Checking Assistant. Answer using the provided web context accurately. \
+             DO NOT include URLs or links in your response text. Provide ONLY the information. \
+             The sources will be displayed as separate buttons by the system.".to_string(),
             0.3
         ),
         _ => (
-            "You are Mia, a cute and smart AI assistant. Your goal is to be helpful, kind, and concise. Use a friendly tone and emojis occasionally to stay charming.".to_string(),
+            "You are Mia, a cute and smart AI assistant. Your goal is to be helpful and kind. Use a friendly tone and emojis.".to_string(),
             0.75
         ),
     }
@@ -123,6 +148,7 @@ pub async fn create_new_chat(handle: tauri::AppHandle, state: State<'_, AppState
         role: "assistant".into(),
         content: "Hi! I'm Mia. How can I help you today?".into(),
         timestamp: get_now(),
+        sources: None,
     }]);
     
     let mut active_id = state.active_chat_id.lock().unwrap();
@@ -139,23 +165,15 @@ pub async fn get_all_chats(state: State<'_, AppState>) -> Result<Vec<ChatEntry>,
     
     for (id, history) in chats.iter() {
         let last_msg = history.last();
-        let name = history.iter()
-            .find(|m| m.role == "user")
-            .or(history.first())
+        let name = history.iter().find(|m| m.role == "user").or(history.first())
             .map(|m| {
                 let mut s = m.content.chars().take(25).collect::<String>();
                 if m.content.len() > 25 { s.push_str("..."); }
                 s
-            })
-            .unwrap_or_else(|| "New conversation".to_string());
+            }).unwrap_or_else(|| "New conversation".to_string());
 
-        entries.push(ChatEntry {
-            id: id.clone(),
-            name,
-            last_active: last_msg.map(|m| m.timestamp).unwrap_or(0),
-        });
+        entries.push(ChatEntry { id: id.clone(), name, last_active: history.last().map(|m| m.timestamp).unwrap_or(0) });
     }
-
     entries.sort_by(|a, b| b.last_active.cmp(&a.last_active));
     Ok(entries)
 }
@@ -163,9 +181,7 @@ pub async fn get_all_chats(state: State<'_, AppState>) -> Result<Vec<ChatEntry>,
 #[tauri::command]
 pub async fn switch_chat(chat_id: String, state: State<'_, AppState>) -> Result<(), String> {
     let chats = state.chats.lock().unwrap();
-    if !chats.contains_key(&chat_id) {
-        return Err("Chat not found".into());
-    }
+    if !chats.contains_key(&chat_id) { return Err("Chat not found".into()); }
     let mut active_id = state.active_chat_id.lock().unwrap();
     *active_id = chat_id;
     Ok(())
@@ -174,25 +190,23 @@ pub async fn switch_chat(chat_id: String, state: State<'_, AppState>) -> Result<
 #[tauri::command]
 pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_, AppState>) -> Result<MiaResponse, String> {
     let chat_id = state.active_chat_id.lock().unwrap().clone();
-    if chat_id.is_empty() {
-        return Err("No active chat!".into());
-    }
+    if chat_id.is_empty() { return Err("No active chat!".into()); }
 
     let user_mode = state.current_mode.lock().unwrap().clone();
 
-    let mut search_results = String::new();
-    if user_mode == MiaMode::Search {
+    let (search_context, web_sources) = if user_mode == MiaMode::Search {
         println!(">>> Mia is searching the web for: {}", message);
-        search_results = fetch_web_results(&message).await.unwrap_or_else(|_| "\nInternet access failed.".to_string());
-    }
+        fetch_web_results(&message).await
+    } else {
+        (String::new(), Vec::new())
+    };
 
     let (system_msg, temperature) = get_settings_for_mode(&message, &user_mode);
 
-    let now = get_now();
     {
         let mut chats = state.chats.lock().unwrap();
         let history = chats.entry(chat_id.clone()).or_insert(Vec::new());
-        history.push(ChatMessage { role: "user".into(), content: message.clone(), timestamp: now });
+        history.push(ChatMessage { role: "user".into(), content: message.clone(), timestamp: get_now(), sources: None });
         if history.len() > 15 { history.remove(0); }
     }
 
@@ -202,7 +216,7 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     let ctx_params = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(2048));
     let mut ctx = brain.model.new_context(&state.backend, ctx_params).map_err(|e| e.to_string())?;
 
-    let mut prompt = format!("<|im_start|>system\n{}{}<|im_end|>\n", system_msg, search_results);
+    let mut prompt = format!("<|im_start|>system\n{}{}<|im_end|>\n", system_msg, search_context);
     {
         let chats = state.chats.lock().unwrap();
         if let Some(history) = chats.get(&chat_id) {
@@ -253,15 +267,26 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     let tps = if duration.as_secs_f32() > 0.0 { generated_tokens as f32 / duration.as_secs_f32() } else { 0.0 };
 
     let final_resp = response.trim().to_string();
+    
     {
         let mut chats = state.chats.lock().unwrap();
         if let Some(history) = chats.get_mut(&chat_id) {
-            history.push(ChatMessage { role: "assistant".into(), content: final_resp.clone(), timestamp: get_now() });
+            history.push(ChatMessage { 
+                role: "assistant".into(), 
+                content: final_resp.clone(), 
+                timestamp: get_now(),
+                sources: if web_sources.is_empty() { None } else { Some(web_sources.clone()) } 
+            });
         }
         save_chats_to_disk(&handle, &chats)?;
     }
 
-    Ok(MiaResponse { content: final_resp, tokens: generated_tokens, speed: tps })
+    Ok(MiaResponse { 
+        content: final_resp, 
+        tokens: generated_tokens, 
+        speed: tps, 
+        sources: web_sources 
+    })
 }
 
 #[tauri::command]

@@ -13,11 +13,18 @@ pub enum MiaMode {
     Search
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct WebSource {
+    pub title: String,
+    pub url: String,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
     pub timestamp: u64,
+    pub sources: Option<Vec<WebSource>>
 }
 
 #[derive(Serialize, Deserialize, Clone)]

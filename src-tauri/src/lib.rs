@@ -30,6 +30,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState { 
             games_list: shared_games,
             sys: system_info,
@@ -54,7 +55,8 @@ pub fn run() {
             commands::window::maximize_main_window,
             commands::system::get_system_stats,
             commands::settings::save_settings,
-            commands::settings::get_settings
+            commands::settings::get_settings,
+            commands::chat::set_mia_mode
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {
