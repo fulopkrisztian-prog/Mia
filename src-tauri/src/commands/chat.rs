@@ -1,4 +1,5 @@
 use crate::state::{AppState, MiaModel, ChatMessage, MiaMode, WebSource};
+use crate::commands::translator::{translate_to_en, translate_to_hu};
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
@@ -100,7 +101,6 @@ async fn fetch_web_results(query: &str) -> (String, Vec<WebSource>) {
     }
 
     if sources.is_empty() {
-        println!("DEBUG: No sources found in HTML!");
         (String::from("No search results found on the web."), Vec::new())
     } else {
         (search_context, sources)
@@ -150,7 +150,7 @@ pub async fn create_new_chat(handle: tauri::AppHandle, state: State<'_, AppState
     
     chats.insert(new_id.clone(), vec![ChatMessage {
         role: "assistant".into(),
-        content: "Hi! I'm Mia. How can I help you today?".into(),
+        content: "Szia! Mia vagyok. Miben segíthetek ma?".into(),
         timestamp: get_now(),
         sources: None,
     }]);
@@ -168,7 +168,6 @@ pub async fn get_all_chats(state: State<'_, AppState>) -> Result<Vec<ChatEntry>,
     let mut entries: Vec<ChatEntry> = Vec::new();
     
     for (id, history) in chats.iter() {
-        let last_msg = history.last();
         let name = history.iter().find(|m| m.role == "user").or(history.first())
             .map(|m| {
                 let mut s = m.content.chars().take(25).collect::<String>();
@@ -196,11 +195,13 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     let chat_id = state.active_chat_id.lock().unwrap().clone();
     if chat_id.is_empty() { return Err("No active chat!".into()); }
 
+    let english_message = translate_to_en(&message);
+    println!(">>> Offline Translation (HU->EN): {}", english_message);
+
     let user_mode = state.current_mode.lock().unwrap().clone();
 
     let (search_context, web_sources) = if user_mode == MiaMode::Search {
-        println!(">>> Mia is searching the web for: {}", message);
-        fetch_web_results(&message).await
+        fetch_web_results(&english_message).await
     } else {
         (String::new(), Vec::new())
     };
@@ -221,14 +222,8 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     let mut ctx = brain.model.new_context(&state.backend, ctx_params).map_err(|e| e.to_string())?;
 
     let mut prompt = format!("<|im_start|>system\n{}{}<|im_end|>\n", system_msg, search_context);
-    {
-        let chats = state.chats.lock().unwrap();
-        if let Some(history) = chats.get(&chat_id) {
-            for msg in history.iter() {
-                prompt.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
-            }
-        }
-    }
+    
+    prompt.push_str(&format!("<|im_start|>user\n{}<|im_end|>\n", english_message));
     prompt.push_str("<|im_start|>assistant\n");
 
     let tokens = brain.model.str_to_token(&prompt, AddBos::Never).map_err(|e| e.to_string())?;
@@ -240,16 +235,15 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
 
     let start_time = Instant::now();
     let mut generated_tokens = 0;
-    let seed: u32 = rand::random();
-
+    
     let mut sampler = LlamaSampler::chain(vec![
         LlamaSampler::temp(temperature),
         LlamaSampler::top_k(40),
         LlamaSampler::top_p(0.95, 1),
-        LlamaSampler::dist(seed),
+        LlamaSampler::dist(rand::random()),
     ], false);
 
-    let mut response = String::new();
+    let mut response_en = String::new();
     let mut decoder = encoding_rs::UTF_8.new_decoder();
     let mut n_cur = tokens.len() as i32;
     let mut token = sampler.sample(&ctx, batch.n_tokens() - 1);
@@ -257,7 +251,7 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     for _ in 0..512 {
         if brain.model.is_eog_token(token) { break; }
         let piece = brain.model.token_to_piece(token, &mut decoder, false, None).map_err(|e| e.to_string())?;
-        response.push_str(&piece);
+        response_en.push_str(&piece);
 
         batch.clear();
         batch.add(token, n_cur, &[0], true).map_err(|e| e.to_string())?;
@@ -270,14 +264,15 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     let duration = start_time.elapsed();
     let tps = if duration.as_secs_f32() > 0.0 { generated_tokens as f32 / duration.as_secs_f32() } else { 0.0 };
 
-    let final_resp = response.trim().to_string();
-    
+    let final_resp_hu = translate_to_hu(response_en.trim());
+    println!("<<< Offline Translation (EN->HU): {}", final_resp_hu);
+
     {
         let mut chats = state.chats.lock().unwrap();
         if let Some(history) = chats.get_mut(&chat_id) {
             history.push(ChatMessage { 
                 role: "assistant".into(), 
-                content: final_resp.clone(), 
+                content: final_resp_hu.clone(), 
                 timestamp: get_now(),
                 sources: if web_sources.is_empty() { None } else { Some(web_sources.clone()) } 
             });
@@ -286,7 +281,7 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     }
 
     Ok(MiaResponse { 
-        content: final_resp, 
+        content: final_resp_hu, 
         tokens: generated_tokens, 
         speed: tps, 
         sources: web_sources 
