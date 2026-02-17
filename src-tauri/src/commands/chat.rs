@@ -13,6 +13,10 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::collections::HashMap;
 use std::fs;
 use scraper::{Html, Selector};
+use std::path::Path;
+use pdf_extract::extract_text;
+use dotext::*;
+use std::io::Read;
 
 #[derive(Serialize)]
 pub struct MiaResponse {
@@ -324,4 +328,32 @@ pub async fn delete_chat(chat_id: String, handle: tauri::AppHandle, state: State
     }
     save_chats_to_disk(&handle, &chats)?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn upload_file(path: String) -> Result<String, String> {
+    let path_obj = Path::new(&path);
+    let file_name = path_obj.file_name().unwrap_or_default().to_string_lossy();
+    let extension = path_obj.extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    let content = match extension.as_str() {
+        "txt" | "md" | "rs" | "js" | "py" | "json" | "html" | "css" | "cpp" | "h" => {
+            fs::read_to_string(&path).map_err(|e| format!("Szöveges hiba: {}", e))?
+        },
+        "pdf" => {
+            extract_text(&path).map_err(|e| format!("PDF hiba: {}", e))?
+        },
+        "docx" => {
+            let mut docx = Docx::open(&path).map_err(|e| format!("Word hiba: {}", e))?;
+            let mut txt = String::new();
+            docx.read_to_string(&mut txt).map_err(|e| format!("Word olvasási hiba: {}", e))?;
+            txt
+        },
+        _ => return Err(format!("A(z) .{} formátumot még nem tanítottad meg nekem!", extension)),
+    };
+
+    Ok(format!("\n[DOKUMENTUM: {}]\n{}\n[DOKUMENTUM VÉGE]", file_name, content))
 }

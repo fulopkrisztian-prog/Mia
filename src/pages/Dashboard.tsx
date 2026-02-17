@@ -3,10 +3,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X, Maximize2, Copy } from 'lucide-react';
 
-import Sidebar from './components/Sidebar';
-import ChatWindow from './components/ChatWindow';
-import Monitor from './components/Monitor';
-import SettingsPage from './components/Settings';
+import Sidebar from './components/UI/Sidebar';
+import ChatWindow from './ChatWindow';
+import Monitor from './components/UI/Monitor';
+import SettingsPage from './components/UI/Settings';
 
 type TabType = 'chat' | 'monitor' | 'settings';
 

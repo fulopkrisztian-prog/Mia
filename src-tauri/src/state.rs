@@ -50,6 +50,7 @@ impl Default for AppSettings {
     }
 }
 
+
 pub struct AppState {
     pub games_list: Arc<Mutex<Vec<String>>>,
     pub sys: Arc<Mutex<System>>,

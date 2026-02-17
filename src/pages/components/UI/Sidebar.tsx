@@ -1,5 +1,5 @@
 import { MessageSquare, Activity, Settings } from 'lucide-react';
-import { cn } from '../../utils/cn';
+import { cn } from '../../../utils/cn';
 
 interface SidebarProps {
   activeTab: 'chat' | 'monitor' | 'settings';
