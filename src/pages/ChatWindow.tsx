@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { Message, ChatEntry, MiaMode, MiaResponse } from '../types/chat';
 import { ChatSidebar } from './components/Chat/ChatSidebar';
 import { ChatInput } from './components/Chat/ChatInput';
 import { MessageItem } from './components/Chat/MessageItem';
-import SettingsPage from './components/UI/Settings'; // Settings oldal import
+import SettingsPage from './components/UI/Settings';
+import { VRMViewer } from './components/UI/VRMViewer';
 
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -18,12 +19,28 @@ const ChatWindow = () => {
   const [miaMode, setMiaMode] = useState<MiaMode>('Auto');
   const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // Settings nézet állapota
+  const [showSettings, setShowSettings] = useState(false);
+  const [mood, setMood] = useState<'idle' | 'thinking' | 'speaking' | 'scared'>('idle');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchChats(true); }, []);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const interval = setInterval(() => {
+      setMood((current) => {
+        if (current !== 'idle') return current;
+        const moods: ('thinking' | 'speaking' | 'scared')[] = ['thinking', 'speaking', 'scared'];
+        const randomMood = moods[Math.floor(Math.random() * moods.length)];
+        setMood(randomMood);
+        setTimeout(() => setMood('idle'), 2000);
+        return randomMood;
+      });
+    }, 5000 + Math.random() * 10000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const fetchChats = async (shouldLoadActive = false) => {
     try {
@@ -45,6 +62,7 @@ const ChatWindow = () => {
       setMessages([{ id: 'welcome', content: 'Szia! Mia vagyok.', sender: 'mia', timestamp: new Date() }]);
       await fetchChats();
       setIsSidebarOpen(false);
+      setMood('idle');
     } catch (err) { console.error(err); }
   };
 
@@ -61,6 +79,7 @@ const ChatWindow = () => {
         sources: m.sources,
       })));
       setIsSidebarOpen(false);
+      setMood('idle');
     } catch (err) { console.error(err); }
   };
 
@@ -87,49 +106,72 @@ const ChatWindow = () => {
   const handleSend = async () => {
     if ((!inputText.trim() && !attachedFile) || isLoading) return;
     const fullPrompt = attachedFile ? `${attachedFile.content}\n\nKérdés: ${inputText}` : inputText;
-    
+
     setMessages(prev => [...prev, { id: Date.now(), content: attachedFile ? `📄 ${attachedFile.name}\n${inputText}` : inputText, sender: 'user', timestamp: new Date() }]);
     setInputText('');
     setAttachedFile(null);
     setIsLoading(true);
+    setMood('thinking');
 
     try {
       const response: MiaResponse = await invoke('ask_mia', { message: fullPrompt });
+
+      const scaredKeywords = ['ijesztő', 'félelmetes', 'halál', 'veszély', 'szörnyű', 'rettenetes'];
+      const isScary = scaredKeywords.some(kw => response.content.toLowerCase().includes(kw));
+
+      setMood(isScary ? 'scared' : 'speaking');
+
       setMessages(prev => [...prev, { id: Date.now() + 1, content: response.content, sender: 'mia', timestamp: new Date(), tokens: response.tokens, speed: response.speed, sources: response.sources }]);
+
+      setTimeout(() => setMood('idle'), 2000);
+
       await fetchChats();
-    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+    } catch (err) {
+      console.error(err);
+      setMood('idle');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-950">
-      {/* Bal oldali sidebar – mindig látszik */}
-      <aside className="hidden md:block w-56 flex-shrink-0">
+      <aside className="hidden md:block w-64 flex-shrink-0 border-r border-white/5">
         <ChatSidebar
           chats={chats}
           activeChatId={activeChatId}
           onNewChat={handleNewChat}
           onSwitchChat={handleSwitchChat}
           onDeleteChat={handleDeleteChat}
-          onOpenSettings={() => setShowSettings(true)} // Settings gomb prop
+          onOpenSettings={() => setShowSettings(true)}
         />
       </aside>
 
-      {/* Jobb oldali tartalom */}
       <div className="flex flex-col flex-1 min-w-0">
-        {/* Mobil fejléc */}
         <div className="md:hidden flex items-center p-3 border-b border-white/5 bg-slate-900/60">
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu className="w-4 h-4 text-slate-400" /></button>
-          <span className="text-sm font-semibold truncate flex-1">{chats.find(c => c.id === activeChatId)?.name ?? 'Mia'}</span>
+          <button onClick={() => setIsSidebarOpen(true)} className="p-2">
+            <Menu className="w-4 h-4 text-slate-400" />
+          </button>
+          <span className="text-sm font-semibold truncate flex-1">
+            {chats.find(c => c.id === activeChatId)?.name ?? 'Mia'}
+          </span>
         </div>
 
-        {/* Settings vagy Chat nézet */}
         {showSettings ? (
-          <SettingsPage onBack={() => setShowSettings(false)} /> // Settings oldal vissza gombbal
+          <SettingsPage onBack={() => setShowSettings(false)} />
         ) : (
           <>
+            <div className="md:hidden flex justify-center py-2 border-b border-white/5 bg-slate-900/40">
+              <VRMViewer mood={mood} />
+            </div>
+
             <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 custom-scrollbar">
-              {messages.map((msg) => <MessageItem key={msg.id} message={msg} />)}
-              {isLoading && <div className="text-xs text-slate-500 animate-pulse px-4">Mia gondolkodik...</div>}
+              {messages.map((msg) => (
+                <MessageItem key={msg.id} message={msg} />
+              ))}
+              {isLoading && (
+                <div className="text-xs text-slate-500 animate-pulse px-4">Mia gondolkodik...</div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
@@ -148,7 +190,10 @@ const ChatWindow = () => {
         )}
       </div>
 
-      {/* Mobil sidebar */}
+      <aside className="hidden md:block w-80 flex-shrink-0 border-l border-white/5">
+        <VRMViewer mood={mood} />
+      </aside>
+
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setIsSidebarOpen(false)} />

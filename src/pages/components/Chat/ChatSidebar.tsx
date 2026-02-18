@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, MessageSquare, Trash2, Settings } from 'lucide-react'; // Settings ikon hozzáadva
+import { Plus, MessageSquare, Trash2, Settings } from 'lucide-react';
 import { ChatEntry } from '../../../types/chat';
 
 interface ChatSidebarProps {
@@ -8,7 +8,7 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onSwitchChat: (id: string) => void;
   onDeleteChat: (e: React.MouseEvent, id: string) => void;
-  onOpenSettings: () => void; // új prop
+  onOpenSettings: () => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -16,7 +16,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 }) => {
   return (
     <div className="flex flex-col h-full bg-slate-900/60 border-r border-white/5">
-      {/* Új beszélgetés gomb */}
       <div className="p-4 border-b border-white/5">
         <button
           onClick={onNewChat}
@@ -27,7 +26,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </button>
       </div>
 
-      {/* Chat lista */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
         {chats.length === 0 && (
           <p className="text-center text-slate-600 text-xs mt-8 px-4">Még nincs beszélgetés</p>
@@ -54,7 +52,6 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         ))}
       </div>
 
-      {/* Settings gomb a sidebar alján */}
       <div className="p-3 border-t border-white/5">
         <button
           onClick={onOpenSettings}

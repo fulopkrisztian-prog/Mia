@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Gamepad2, Globe, Clock, Save, RefreshCw, Plus, X as CloseIcon, Monitor, Palette, ArrowLeft } from 'lucide-react'; // ArrowLeft hozzáadva
+import { Gamepad2, Globe, Clock, Save, RefreshCw, Plus, X as CloseIcon, Monitor, Palette, ArrowLeft } from 'lucide-react';
 
 interface SettingsPageProps {
-  onBack?: () => void; // Vissza gomb prop
+  onBack?: () => void;
 }
 
 const SettingsPage = ({ onBack }: SettingsPageProps) => {
@@ -112,7 +112,6 @@ const SettingsPage = ({ onBack }: SettingsPageProps) => {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar select-none p-4 sm:p-6">
-      {/* Fejléc vissza gombbal */}
       <div className="flex items-center mb-6">
         {onBack && (
           <button
@@ -133,7 +132,6 @@ const SettingsPage = ({ onBack }: SettingsPageProps) => {
 
       <div className={`grid ${gridCols} gap-4 sm:gap-6 max-w-7xl mx-auto`}>
         
-        {/* Game Detection panel */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
           <div className="flex items-center space-x-3 mb-4 sm:mb-6">
             <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 flex-shrink-0">
@@ -191,7 +189,6 @@ const SettingsPage = ({ onBack }: SettingsPageProps) => {
           </div>
         </div>
 
-        {/* Jobb oldali panel (keresés + rendszer) */}
         <div className={`${isFullscreen ? 'space-y-4 sm:space-y-6' : 'space-y-4 sm:space-y-6'}`}>
           
           <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
@@ -274,7 +271,6 @@ const SettingsPage = ({ onBack }: SettingsPageProps) => {
         </div>
       </div>
 
-      {/* Teljes képernyős módban extra beállítások */}
       {isFullscreen && (
         <div className="mt-4 sm:mt-6 max-w-7xl mx-auto">
           <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
@@ -328,7 +324,6 @@ const SettingsPage = ({ onBack }: SettingsPageProps) => {
         </div>
       )}
 
-      {/* Mentés és reset gombok */}
       <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/5">
         <div className={`flex flex-col ${isFullscreen ? 'sm:flex-row' : ''} justify-end space-y-3 ${isFullscreen ? 'sm:space-y-0 sm:space-x-3' : ''}`}>
           <button
