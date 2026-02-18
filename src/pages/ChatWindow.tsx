@@ -7,6 +7,7 @@ import { Message, ChatEntry, MiaMode, MiaResponse } from '../types/chat';
 import { ChatSidebar } from './components/Chat/ChatSidebar';
 import { ChatInput } from './components/Chat/ChatInput';
 import { MessageItem } from './components/Chat/MessageItem';
+import SettingsPage from './components/UI/Settings'; // Settings oldal import
 
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -17,6 +18,7 @@ const ChatWindow = () => {
   const [miaMode, setMiaMode] = useState<MiaMode>('Auto');
   const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); // Settings nézet állapota
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -100,27 +102,69 @@ const ChatWindow = () => {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-slate-950">
-      <aside className="hidden md:block w-56 flex-shrink-0"><ChatSidebar chats={chats} activeChatId={activeChatId} onNewChat={handleNewChat} onSwitchChat={handleSwitchChat} onDeleteChat={handleDeleteChat} /></aside>
+      {/* Bal oldali sidebar – mindig látszik */}
+      <aside className="hidden md:block w-56 flex-shrink-0">
+        <ChatSidebar
+          chats={chats}
+          activeChatId={activeChatId}
+          onNewChat={handleNewChat}
+          onSwitchChat={handleSwitchChat}
+          onDeleteChat={handleDeleteChat}
+          onOpenSettings={() => setShowSettings(true)} // Settings gomb prop
+        />
+      </aside>
 
+      {/* Jobb oldali tartalom */}
       <div className="flex flex-col flex-1 min-w-0">
+        {/* Mobil fejléc */}
         <div className="md:hidden flex items-center p-3 border-b border-white/5 bg-slate-900/60">
           <button onClick={() => setIsSidebarOpen(true)} className="p-2"><Menu className="w-4 h-4 text-slate-400" /></button>
           <span className="text-sm font-semibold truncate flex-1">{chats.find(c => c.id === activeChatId)?.name ?? 'Mia'}</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 custom-scrollbar">
-          {messages.map((msg) => <MessageItem key={msg.id} message={msg} />)}
-          {isLoading && <div className="text-xs text-slate-500 animate-pulse px-4">Mia gondolkodik...</div>}
-          <div ref={messagesEndRef} />
-        </div>
+        {/* Settings vagy Chat nézet */}
+        {showSettings ? (
+          <SettingsPage onBack={() => setShowSettings(false)} /> // Settings oldal vissza gombbal
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 custom-scrollbar">
+              {messages.map((msg) => <MessageItem key={msg.id} message={msg} />)}
+              {isLoading && <div className="text-xs text-slate-500 animate-pulse px-4">Mia gondolkodik...</div>}
+              <div ref={messagesEndRef} />
+            </div>
 
-        <ChatInput inputText={inputText} setInputText={setInputText} isLoading={isLoading} miaMode={miaMode} onModeChange={handleModeChange} attachedFile={attachedFile} setAttachedFile={setAttachedFile} onAttach={handleAttachFile} onSend={handleSend} />
+            <ChatInput
+              inputText={inputText}
+              setInputText={setInputText}
+              isLoading={isLoading}
+              miaMode={miaMode}
+              onModeChange={handleModeChange}
+              attachedFile={attachedFile}
+              setAttachedFile={setAttachedFile}
+              onAttach={handleAttachFile}
+              onSend={handleSend}
+            />
+          </>
+        )}
       </div>
 
+      {/* Mobil sidebar */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setIsSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-slate-900 shadow-xl"><ChatSidebar chats={chats} activeChatId={activeChatId} onNewChat={handleNewChat} onSwitchChat={handleSwitchChat} onDeleteChat={handleDeleteChat} /></div>
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-slate-900 shadow-xl">
+            <ChatSidebar
+              chats={chats}
+              activeChatId={activeChatId}
+              onNewChat={handleNewChat}
+              onSwitchChat={handleSwitchChat}
+              onDeleteChat={handleDeleteChat}
+              onOpenSettings={() => {
+                setShowSettings(true);
+                setIsSidebarOpen(false);
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

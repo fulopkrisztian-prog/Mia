@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Gamepad2, Globe, Clock, Save, RefreshCw, Plus, X as CloseIcon, Monitor, Palette } from 'lucide-react';
+import { Gamepad2, Globe, Clock, Save, RefreshCw, Plus, X as CloseIcon, Monitor, Palette, ArrowLeft } from 'lucide-react'; // ArrowLeft hozzáadva
 
-const SettingsPage = () => {
+interface SettingsPageProps {
+  onBack?: () => void; // Vissza gomb prop
+}
+
+const SettingsPage = ({ onBack }: SettingsPageProps) => {
   const [settings, setSettings] = useState({
     searxngUrl: 'https://searx.example.com',
     launchOnStartup: true,
@@ -108,15 +112,28 @@ const SettingsPage = () => {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar select-none p-4 sm:p-6">
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
-          Settings
-        </h1>
-        <p className="text-slate-400 font-medium text-sm sm:text-base">Manage Mia's behavior and detection</p>
+      {/* Fejléc vissza gombbal */}
+      <div className="flex items-center mb-6">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="mr-3 p-2 rounded-lg hover:bg-slate-800/60 text-slate-400 hover:text-slate-200 transition-colors"
+            title="Vissza a chathez"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
+            Settings
+          </h1>
+          <p className="text-slate-400 font-medium text-sm sm:text-base">Manage Mia's behavior and detection</p>
+        </div>
       </div>
 
       <div className={`grid ${gridCols} gap-4 sm:gap-6 max-w-7xl mx-auto`}>
         
+        {/* Game Detection panel */}
         <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
           <div className="flex items-center space-x-3 mb-4 sm:mb-6">
             <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400 flex-shrink-0">
@@ -174,6 +191,7 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {/* Jobb oldali panel (keresés + rendszer) */}
         <div className={`${isFullscreen ? 'space-y-4 sm:space-y-6' : 'space-y-4 sm:space-y-6'}`}>
           
           <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
@@ -256,6 +274,7 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      {/* Teljes képernyős módban extra beállítások */}
       {isFullscreen && (
         <div className="mt-4 sm:mt-6 max-w-7xl mx-auto">
           <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-xl">
@@ -309,6 +328,7 @@ const SettingsPage = () => {
         </div>
       )}
 
+      {/* Mentés és reset gombok */}
       <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-white/5">
         <div className={`flex flex-col ${isFullscreen ? 'sm:flex-row' : ''} justify-end space-y-3 ${isFullscreen ? 'sm:space-y-0 sm:space-x-3' : ''}`}>
           <button

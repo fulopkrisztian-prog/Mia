@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { X, Maximize2, Copy } from 'lucide-react';
-
-import Sidebar from './components/UI/Sidebar';
 import ChatWindow from './ChatWindow';
-import Monitor from './components/UI/Monitor';
 import SettingsPage from './components/UI/Settings';
 
 type TabType = 'chat' | 'monitor' | 'settings';
@@ -52,8 +49,6 @@ const Dashboard = () => {
     switch (activeTab) {
       case 'chat':
         return <ChatWindow />;
-      case 'monitor':
-        return <Monitor />;
       case 'settings':
         return <SettingsPage />;
       default:
@@ -98,7 +93,6 @@ const Dashboard = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
         <div className="flex-1 overflow-hidden">{renderContent()}</div>
       </div>
 

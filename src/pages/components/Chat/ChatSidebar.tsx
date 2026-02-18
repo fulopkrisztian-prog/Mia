@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Settings } from 'lucide-react'; // Settings ikon hozzáadva
 import { ChatEntry } from '../../../types/chat';
 
 interface ChatSidebarProps {
@@ -8,13 +8,15 @@ interface ChatSidebarProps {
   onNewChat: () => void;
   onSwitchChat: (id: string) => void;
   onDeleteChat: (e: React.MouseEvent, id: string) => void;
+  onOpenSettings: () => void; // új prop
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({
-  chats, activeChatId, onNewChat, onSwitchChat, onDeleteChat
+  chats, activeChatId, onNewChat, onSwitchChat, onDeleteChat, onOpenSettings
 }) => {
   return (
     <div className="flex flex-col h-full bg-slate-900/60 border-r border-white/5">
+      {/* Új beszélgetés gomb */}
       <div className="p-4 border-b border-white/5">
         <button
           onClick={onNewChat}
@@ -25,6 +27,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </button>
       </div>
 
+      {/* Chat lista */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
         {chats.length === 0 && (
           <p className="text-center text-slate-600 text-xs mt-8 px-4">Még nincs beszélgetés</p>
@@ -51,8 +54,16 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         ))}
       </div>
 
+      {/* Settings gomb a sidebar alján */}
       <div className="p-3 border-t border-white/5">
-        <p className="text-center text-slate-600 text-[10px]">v1.5.1 Mia Neural</p>
+        <button
+          onClick={onOpenSettings}
+          className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 text-slate-300 hover:text-white transition-all text-xs"
+        >
+          <Settings className="w-3.5 h-3.5" />
+          <span>Beállítások</span>
+        </button>
+        <p className="text-center text-slate-600 text-[10px] mt-2">v1.5.1 Mia Neural</p>
       </div>
     </div>
   );
