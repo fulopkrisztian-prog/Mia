@@ -1335,5 +1335,3 @@ A projekt főbb erősségei:
 - ✅ Fájl feldolgozás támogatás
 - ✅ Web keresés integráció
 - ✅ Optimalizált memóriakezelés
-
-Ez a dokumentáció átfogó áttekintést nyújt az alkalmazás működéséről, architektúrájáról és fejlesztési lehetőségeiről.
