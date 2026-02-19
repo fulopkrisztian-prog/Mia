@@ -59,7 +59,7 @@ const ChatWindow = () => {
     try {
       const newId: string = await invoke('create_new_chat');
       setActiveChatId(newId);
-      setMessages([{ id: 'welcome', content: 'Szia! Mia vagyok.', sender: 'mia', timestamp: new Date() }]);
+      setMessages([{ id: 'welcome', content: "Hi! I'm Mia. How can I assist you today?", sender: 'mia', timestamp: new Date() }]);
       await fetchChats();
       setIsSidebarOpen(false);
       setMood('idle');

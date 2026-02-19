@@ -149,7 +149,7 @@ pub async fn create_new_chat(handle: tauri::AppHandle, state: State<'_, AppState
     
     chats.insert(new_id.clone(), vec![ChatMessage {
         role: "assistant".into(),
-        content: "Szia! Mia vagyok. Miben segíthetek ma?".into(),
+        content: "Hi! I'm Mia. How can i assist you today?".into(),
         timestamp: get_now(),
         sources: None,
     }]);
