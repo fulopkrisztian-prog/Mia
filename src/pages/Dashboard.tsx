@@ -8,7 +8,7 @@ import SettingsPage from './components/UI/Settings';
 type TabType = 'chat' | 'monitor' | 'settings';
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('chat');
+  const [activeTab] = useState<TabType>('chat');
   const [isMaximized, setIsMaximized] = useState(false);
   const appWindow = getCurrentWindow();
 
