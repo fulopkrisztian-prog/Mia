@@ -37,7 +37,6 @@ pub fn run() {
             sys: system_info,
             mia_brain: Arc::new(Mutex::new(None)),
             backend: Arc::new(backend),
-            history: Mutex::new(Vec::new()),
             chats: Mutex::new(HashMap::new()),
             active_chat_id: Mutex::new(String::new()),
             current_mode: Mutex::new(crate::state::MiaMode::Auto)
