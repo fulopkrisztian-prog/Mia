@@ -10,7 +10,7 @@ use tauri::{Manager, State, Emitter};
 use serde::Serialize;
 use uuid::Uuid;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use scraper::{Html, Selector};
 use std::path::Path;
@@ -35,6 +35,79 @@ pub struct ChatEntry {
 
 fn get_now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64
+}
+
+fn tokenize_for_match(text: &str) -> Vec<String> {
+    text.split(|c: char| !c.is_alphanumeric())
+        .filter_map(|w| {
+            let w = w.to_lowercase();
+            if w.len() >= 3 {
+                Some(w)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn build_memory_context(history: &[ChatMessage], current_user_message: &str) -> (String, String) {
+    if history.is_empty() {
+        return (String::new(), String::new());
+    }
+
+    // Simple summary: trimmed earlier dialogue up to a safe character budget
+    let mut summary = String::new();
+    let mut remaining = 1200usize;
+
+    for msg in history.iter() {
+        let line = format!("{}: {}\n", msg.role, msg.content);
+        if line.len() > remaining {
+            break;
+        }
+        summary.push_str(&line);
+        remaining = remaining.saturating_sub(line.len());
+    }
+
+    if !summary.is_empty() {
+        summary = format!(
+            "Earlier conversation (compressed summary, may be incomplete):\n{}",
+            summary
+        );
+    }
+
+    // Simple RAG over older messages: keyword overlap with current question
+    let mut rag = String::new();
+    let query_tokens_vec = tokenize_for_match(current_user_message);
+    let query_tokens: HashSet<_> = query_tokens_vec.into_iter().collect();
+
+    if !query_tokens.is_empty() {
+        let mut scored: Vec<(u32, &ChatMessage)> = history
+            .iter()
+            .map(|m| {
+                let toks = tokenize_for_match(&m.content);
+                let mut score = 0u32;
+                for t in toks {
+                    if query_tokens.contains(&t) {
+                        score += 1;
+                    }
+                }
+                (score, m)
+            })
+            .filter(|(score, _)| *score > 0)
+            .collect();
+
+        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        scored.truncate(3);
+
+        if !scored.is_empty() {
+            rag.push_str("Particularly relevant earlier messages:\n");
+            for (_, m) in scored {
+                rag.push_str(&format!("- {}: {}\n", m.role, m.content));
+            }
+        }
+    }
+
+    (summary, rag)
 }
 
 fn save_chats_to_disk(handle: &tauri::AppHandle, chats: &HashMap<String, Vec<ChatMessage>>) -> Result<(), String> {
@@ -209,8 +282,22 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
         let mut chats = state.chats.lock().unwrap();
         let history = chats.entry(chat_id.clone()).or_insert(Vec::new());
         history.push(ChatMessage { role: "user".into(), content: message.clone(), timestamp: get_now(), sources: None });
-        if history.len() > 15 { history.remove(0); }
     }
+
+    // Build memory summary + lightweight RAG from older messages
+    let (memory_summary, rag_context, recent_history) = {
+        let chats = state.chats.lock().unwrap();
+        if let Some(history) = chats.get(&chat_id) {
+            let max_recent = 12usize;
+            let len = history.len();
+            let split_at = if len > max_recent { len - max_recent } else { 0 };
+            let (older, recent) = history.split_at(split_at);
+            let (summary, rag) = build_memory_context(older, &message);
+            (summary, rag, recent.to_vec())
+        } else {
+            (String::new(), String::new(), Vec::new())
+        }
+    };
 
     let brain_lock = state.mia_brain.lock().unwrap();
     let brain = brain_lock.as_ref().ok_or("Mia's brain is not loaded!")?;
@@ -218,14 +305,23 @@ pub async fn ask_mia(handle: tauri::AppHandle, message: String, state: State<'_,
     let ctx_params = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(2048));
     let mut ctx = brain.model.new_context(&state.backend, ctx_params).map_err(|e| e.to_string())?;
 
-    let mut prompt = format!("<|im_start|>system\n{}{}<|im_end|>\n", system_msg, search_context);
-    {
-        let chats = state.chats.lock().unwrap();
-        if let Some(history) = chats.get(&chat_id) {
-            for msg in history.iter() {
-                prompt.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
-            }
-        }
+    let mut system_block = system_msg;
+    if !search_context.is_empty() {
+        system_block.push_str("\n\n");
+        system_block.push_str(&search_context);
+    }
+    if !memory_summary.is_empty() {
+        system_block.push_str("\n\n");
+        system_block.push_str(&memory_summary);
+    }
+    if !rag_context.is_empty() {
+        system_block.push_str("\n\n");
+        system_block.push_str(&rag_context);
+    }
+
+    let mut prompt = format!("<|im_start|>system\n{}<|im_end|>\n", system_block);
+    for msg in recent_history.iter() {
+        prompt.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
     }
     prompt.push_str("<|im_start|>assistant\n");
 
