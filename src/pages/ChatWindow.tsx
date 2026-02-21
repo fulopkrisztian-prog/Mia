@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Menu } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
@@ -8,7 +8,8 @@ import { ChatSidebar } from './components/Chat/ChatSidebar';
 import { ChatInput } from './components/Chat/ChatInput';
 import { MessageItem } from './components/Chat/MessageItem';
 import SettingsPage from './components/UI/Settings';
-import { VRMViewer } from './components/UI/VRMViewer';
+
+const VRMViewer = lazy(() => import('./components/UI/VRMViewer').then((m) => ({ default: m.VRMViewer })));
 
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -162,7 +163,9 @@ const ChatWindow = () => {
         ) : (
           <>
             <div className="md:hidden flex justify-center py-2 border-b border-white/5 bg-slate-900/40">
-              <VRMViewer mood={mood} />
+              <Suspense fallback={<div className="w-full h-48 bg-slate-900/60 animate-pulse rounded" />}>
+                <VRMViewer mood={mood} />
+              </Suspense>
             </div>
 
             <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 custom-scrollbar">
@@ -191,7 +194,9 @@ const ChatWindow = () => {
       </div>
 
       <aside className="hidden md:block w-80 flex-shrink-0 border-l border-white/5">
-        <VRMViewer mood={mood} />
+        <Suspense fallback={<div className="w-full h-full min-h-[320px] bg-slate-900/60 animate-pulse" />}>
+          <VRMViewer mood={mood} />
+        </Suspense>
       </aside>
 
       {isSidebarOpen && (

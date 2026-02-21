@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import Dashboard from './pages/Dashboard';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import FloatingIcon from './pages/FloatingIcon';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 
 function App() {
   const [currentPath, setCurrentPath] = useState<string>('/');
@@ -22,11 +23,19 @@ function App() {
       case '/':
       case '/main':
       case '/dashboard':
-        return <Dashboard />;
+        return (
+          <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" /></div>}>
+            <Dashboard />
+          </Suspense>
+        );
       case '/floater':
         return <FloatingIcon />;
       default:
-        return <Dashboard />;
+        return (
+          <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" /></div>}>
+            <Dashboard />
+          </Suspense>
+        );
     }
   };
 
