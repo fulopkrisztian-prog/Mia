@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Menu } from 'lucide-react';
+import { Menu, Trash2 } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 
 import { Message, ChatEntry, MiaMode, MiaResponse } from '../types/chat';
@@ -22,6 +22,7 @@ const ChatWindow = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [mood, setMood] = useState<'idle' | 'thinking' | 'speaking' | 'scared'>('idle');
+  const [chatToDelete, setChatToDelete] = useState<ChatEntry | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,15 +85,30 @@ const ChatWindow = () => {
     } catch (err) { console.error(err); }
   };
 
-  const handleDeleteChat = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteChat = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!window.confirm('Törlöd?')) return;
-    try {
-      await invoke('delete_chat', { chatId: id });
-      if (id === activeChatId) { setMessages([]); setActiveChatId(''); }
-      await fetchChats(true);
-    } catch (err) { console.error(err); }
+    const chat = chats.find(c => c.id === id);
+    if (!chat) return;
+    setChatToDelete(chat);
   };
+
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return;
+    try {
+      await invoke('delete_chat', { chatId: chatToDelete.id });
+      if (chatToDelete.id === activeChatId) {
+        setMessages([]);
+        setActiveChatId('');
+      }
+      await fetchChats(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChatToDelete(null);
+    }
+  };
+
+  const cancelDeleteChat = () => setChatToDelete(null);
 
   const handleAttachFile = async () => {
     try {
@@ -200,7 +216,7 @@ const ChatWindow = () => {
       </aside>
 
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setIsSidebarOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-64 bg-slate-900 shadow-xl">
             <ChatSidebar
@@ -214,6 +230,51 @@ const ChatWindow = () => {
                 setIsSidebarOpen(false);
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {chatToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={cancelDeleteChat}
+        >
+          <div
+            className="w-[90%] max-w-sm rounded-2xl bg-slate-900/95 border border-white/10 shadow-2xl shadow-black/40 p-5 backdrop-blur-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start space-x-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-white">
+                  Beszélgetés törlése?
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Biztosan törlöd a(z){' '}
+                  <span className="font-medium text-slate-200">
+                    {chatToDelete.name}
+                  </span>{' '}
+                  beszélgetést? Ez a művelet nem vonható vissza.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end space-x-2">
+              <button
+                onClick={cancelDeleteChat}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+              >
+                Mégse
+              </button>
+              <button
+                onClick={confirmDeleteChat}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md shadow-red-500/30 hover:brightness-110 transition-all"
+              >
+                Törlés
+              </button>
+            </div>
           </div>
         </div>
       )}

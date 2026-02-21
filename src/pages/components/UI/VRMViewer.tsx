@@ -101,7 +101,7 @@ const VRMModel: React.FC<{ mood: VRMViewerProps['mood'] }> = ({ mood }) => {
                     clearInterval(intervalRef.current);
                     setIsTyping(false);
                     
-                    const visibleDuration = 8000 + Math.min(humanText.length * 60, 5000);
+                    const visibleDuration = 60000 + Math.min(humanText.length * 150, 15000);
                     fadeTimeoutRef.current = setTimeout(() => {
                         setIsVisible(false);
                     }, visibleDuration);
@@ -192,18 +192,37 @@ const VRMModel: React.FC<{ mood: VRMViewerProps['mood'] }> = ({ mood }) => {
         <group>
             {vrm && <primitive object={vrm.scene} />}
             {isVisible && displayText && (
-                <Html position={[0.2, 0.5, 0]} center>
-                    <div className={`
-                        relative w-[160px] bg-white/10 backdrop-blur-2xl border border-white/20 p-3 rounded-2xl rounded-bl-none shadow-2xl
-                        transition-all duration-700 ease-in-out origin-bottom-left
-                        ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}
-                        pointer-events-none select-none
-                    `}>
-                        <p className="text-white font-medium text-[11px] leading-snug break-words italic tracking-tight">
+                <Html position={[0.1, 0.5, 0]} center>
+                    <div
+                        className={`
+                            relative w-[180px] max-w-[90vw]
+                            bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-slate-900/95
+                            backdrop-blur-xl
+                            border border-white/15
+                            shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.05)_inset]
+                            p-3.5
+                            rounded-2xl rounded-bl-md
+                            transition-all duration-500 ease-out origin-bottom-left
+                            ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-1'}
+                            pointer-events-none select-none
+                        `}
+                        style={{
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06) inset, 0 2px 8px rgba(0,0,0,0.2)',
+                        }}
+                    >
+                        <p className="text-slate-100 font-medium text-[11px] leading-[1.45] break-words tracking-tight">
                             {displayText}
-                            {isTyping && <span className="inline-block w-1 h-3 bg-blue-400 ml-1 animate-pulse" />}
+                            {isTyping && (
+                                <span
+                                    className="inline-block w-0.5 h-3.5 bg-cyan-400/90 ml-1 rounded-full animate-pulse align-middle"
+                                    style={{ animationDuration: '0.8s' }}
+                                />
+                            )}
                         </p>
-                        <div className="absolute -left-1.5 bottom-0 w-3 h-3 bg-white/15 backdrop-blur-2xl border-l border-b border-white/20 transform -skew-x-[40deg]" />
+                        <div
+                            className="absolute left-0 bottom-0 w-0 h-0 border-y-[6px] border-r-[10px] border-y-transparent border-r-slate-800/95"
+                            style={{ filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.2))' }}
+                        />
                     </div>
                 </Html>
             )}
